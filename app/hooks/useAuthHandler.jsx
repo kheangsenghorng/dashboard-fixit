@@ -19,7 +19,7 @@ export function useAuthHandler() {
 
       // Only admin allowed
       if (user?.role === "admin") {
-        router.replace("/admin");
+        router.replace("/admin/dashboard");
         return;
       }
 

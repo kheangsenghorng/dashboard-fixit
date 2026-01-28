@@ -6,7 +6,7 @@ import { useGuestGuard } from "../hooks/useGuestGuard";
 import { Mail, Lock, Loader2, LogIn } from "lucide-react";
 
 export default function Login() {
-  useGuestGuard("/admin");
+  useGuestGuard("/admin/dashboard");
 
   const {
     email,

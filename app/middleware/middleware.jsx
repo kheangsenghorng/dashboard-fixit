@@ -9,7 +9,7 @@ export function middleware(request) {
 
   // "/" and "/admin" are protected
   const isProtected =
-    pathname === "/" || pathname.startsWith("/admin");
+    pathname === "/" || pathname.startsWith("/admin/dashboard");
 
   // Not logged in → protected page
   if (!token && isProtected) {
