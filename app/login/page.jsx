@@ -1,40 +1,12 @@
-"use client";
 
-import { useAuthHandler } from "../hooks/useAuthHandler";
+import LoginClient from "./LoginClient";
 
-export default function Login() {
-  const {
-    email,
-    setEmail,
-    password,
-    setPassword,
-    loading,
-    hasHydrated,
-    handleLogin,
-  } = useAuthHandler();
+export const metadata = {
+  title: "Login",
+  description: "Login to admin panel",
+};
 
-  if (!hasHydrated) return null;
 
-  return (
-    <div>
-      <h1>Login</h1>
-
-      <input
-        placeholder="email"
-        value={email}
-        onChange={(e) => setEmail(e.target.value)}
-      />
-
-      <input
-        type="password"
-        placeholder="password"
-        value={password}
-        onChange={(e) => setPassword(e.target.value)}
-      />
-
-      <button disabled={loading} onClick={handleLogin}>
-        {loading ? "Logging in..." : "Login"}
-      </button>
-    </div>
-  );
+export default function LoginPage() {
+  return <LoginClient />;
 }

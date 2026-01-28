@@ -1,45 +1,51 @@
 import { create } from "zustand";
-import { persist, createJSONStorage } from "zustand/middleware";
 import api from "../../lib/api";
+import { setToken, clearToken } from "../../lib/token";
 
-export const useAuthStore = create(
-  persist(
-    (set) => ({
-      user: null,
-      loading: false,
+export const useAuthStore = create((set) => ({
+  user: null,
+  loading: false,
 
-      login: async (email, password) => {
-        const res = await api.post("/login", {
-          login: email,
-          password,
-        });
+  login: async (email, password) => {
+    try {
+      set({ loading: true });
 
-        localStorage.setItem("token", res.data.token);
+      const { data } = await api.post("/login", {
+        login: email,
+        password,
+      });
 
-        const { data } = await api.get("/me");
+      setToken(data.token);
+      set({ user: data.user, loading: false });
 
-        set({ user: data.user });
-      },
-
-      loadUser: async () => {
-        try {
-          const res = await api.get("/me");
-          localStorage.setItem("token", res.data.token);
-          set({ user: res.data.user });
-        } catch {
-          set({ user: null });
-        }
-      },
-
-      logout: async () => {
-        localStorage.removeItem("token");
-        set({ user: null });
-      },
-    }),
-    {
-      name: "auth-storage", // key in localStorage
-      storage: createJSONStorage(() => localStorage),
-      partialize: (state) => ({ user: state.user }), // only persist user
+      return data.user;
+    } catch (e) {
+      set({ loading: false });
+      throw e;
     }
-  )
-);
+  },
+
+  loadUser: async () => {
+    try {
+      set({ loading: true });
+
+      const { data } = await api.get("/me");
+
+      set({ user: data.user, loading: false });
+      return data.user;
+    } catch {
+      clearToken();
+      set({ user: null, loading: false });
+      return null;
+    }
+  },
+
+  logout: async () => {
+    try {
+      await api.post("/logout");
+    } finally {
+      clearToken();
+      set({ user: null });
+    }
+  },
+}));
