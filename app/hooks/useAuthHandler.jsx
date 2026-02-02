@@ -16,6 +16,8 @@ export function useAuthHandler() {
   const handleLogin = async () => {
     try {
       const user = await login(email, password);
+      console.log("user after login:", user);
+      
 
       // Only admin allowed
       if (user?.role === "admin") {

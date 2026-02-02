@@ -6,8 +6,8 @@ import { LayoutDashboard, BarChart3, Users, Settings, Package, X, ShieldCheck } 
 
 const menuItems = [
   { name: 'Dashboard', href: '/admin/dashboard', icon: LayoutDashboard },
-  { name: 'Analytics', href: '/admin/user', icon: BarChart3 },
-  { name: 'Customers', href: '/customers', icon: Users },
+  { name: 'Analytics', href: '/admin/ ', icon: BarChart3 },
+  { name: 'Customers', href: '/admin/aba', icon: Users },
   { name: 'Products', href: '/products', icon: Package },
   { name: 'Settings', href: '/settings', icon: Settings },
 ];
