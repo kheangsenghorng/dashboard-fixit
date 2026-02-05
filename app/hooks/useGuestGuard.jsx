@@ -1,20 +1,18 @@
 "use client";
 
 import { useEffect } from "react";
-import { useRouter } from "next/navigation";
-import { getToken } from "../../lib/token";
+import { useRouter, usePathname } from "next/navigation";
+import { isTokenValid } from "../../lib/token";
 
-export function useGuestGuard(redirectTo = "/") {
+export function useGuestGuard() {
   const router = useRouter();
+  const pathname = usePathname();
 
   useEffect(() => {
-    const token = getToken();
+    if (pathname !== "/login") return;
 
-    // If already logged in → go home
-    if (token) {
-      router.replace(redirectTo);
+    if (isTokenValid()) {
+      router.replace("/admin/dashboard");
     }
-  }, []);
-
-  return {};
+  }, [pathname, router]);
 }

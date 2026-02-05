@@ -1,46 +1,39 @@
 "use client";
 
 import { useState } from "react";
-import { useRouter } from "next/navigation";
+import { useRouter, useSearchParams } from "next/navigation";
 import { useAuthStore } from "../store/useAuthStore";
 
 export function useAuthHandler() {
   const router = useRouter();
+  const params = useSearchParams();
 
-  const login = useAuthStore((s) => s.login);
+  const redirect = params.get("redirect") || "/admin/dashboard";
+
+  const loginAction = useAuthStore((s) => s.login);
   const loading = useAuthStore((s) => s.loading);
 
-  const [email, setEmail] = useState("");
+  const [login, setLogin] = useState("");
   const [password, setPassword] = useState("");
 
   const handleLogin = async () => {
     try {
-      const user = await login(email, password);
-      console.log("user after login:", user);
-      
+      const user = await loginAction(login, password);
 
-      // Only admin allowed
-      if (user?.role === "admin") {
-        router.replace("/admin/dashboard");
-        return;
-      }
+      console.log("🎯 Redirecting to:", redirect);
 
-      // Logged in but not admin
-      router.replace("/login?error=not-admin");
-
-    } catch (err) {
-      // Invalid credentials / server error
-      router.replace("/error?type=login");
+      router.replace(redirect);
+    } catch (e) {
+      console.error("Login failed");
     }
   };
 
   return {
-    email,
-    setEmail,
+    login,
+    setLogin,
     password,
     setPassword,
     loading,
-    hasHydrated: true,
     handleLogin,
   };
 }

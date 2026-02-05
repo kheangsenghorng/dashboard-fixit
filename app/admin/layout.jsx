@@ -1,34 +1,32 @@
 "use client";
 import React, { useState } from 'react';
-import Sidebar from '../../Components/admin/sidebar/Sidebar';
-import Navbar from '../../Components/admin/navbar/Navbar';
 
-export default function RootLayout({ children }) {
+
+import AdminSidebar from '@/Components/admin/sidebar/Sidebar';
+import Navbar from '@/Components/admin/navbar/Navbar';
+
+export default function AdminLayout({ children }) {
   const [sidebarOpen, setSidebarOpen] = useState(false);
-  return (
-    
-      <body className="antialiased text-slate-900">
-        <div className="flex h-screen bg-gray-50 overflow-hidden">
-          {/* Sidebar */}
-          <Sidebar 
-            isOpen={sidebarOpen} 
-            toggleSidebar={() => setSidebarOpen(!sidebarOpen)} 
-          />
 
-          {/* Right Side Wrapper */}
-          <div className="flex-1 flex flex-col overflow-hidden">
-            {/* Header */}
-            <Navbar toggleSidebar={() => setSidebarOpen(!sidebarOpen)} />
-            
-            {/* Page Content */}
-            <main className="flex-1 overflow-y-auto p-4 md:p-8">
-              <div className="max-w-7xl mx-auto">
-                {children}
-              </div>
-            </main>
-          </div>
-        </div>
-      </body>
-   
+  return (
+    <div className="flex h-screen bg-slate-50 overflow-hidden text-slate-900">
+      {/* 1. The Sidebar - Controlled by sidebarOpen state */}
+      <AdminSidebar
+        isOpen={sidebarOpen} 
+        toggleSidebar={() => setSidebarOpen(false)} 
+      />
+
+      {/* 2. The Main Viewport */}
+      <div className="flex flex-col flex-1 min-w-0 overflow-hidden">
+        
+        {/* 3. The Navbar - Passes the function to open the sidebar */}
+        <Navbar toggleSidebar={() => setSidebarOpen(true)} />
+
+        {/* 4. Page Content */}
+        <main className="flex-1 overflow-y-auto p-6 md:p-8">
+          {children}
+        </main>
+      </div>
+    </div>
   );
 }

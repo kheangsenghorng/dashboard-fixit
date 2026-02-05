@@ -1,3 +1,5 @@
+"use client";
+
 import { create } from "zustand";
 import api from "../../lib/api";
 import { setToken, clearToken } from "../../lib/token";
@@ -6,46 +8,48 @@ export const useAuthStore = create((set) => ({
   user: null,
   loading: false,
 
-  login: async (email, password) => {
+  login: async (login, password) => {
+    set({ loading: true });
+  
     try {
-      set({ loading: true });
-
       const { data } = await api.post("/login", {
-        login: email,
+        login,
         password,
       });
+  
+  
+  
+      const token = data.access_token;
+      const user = data.user;
+      setToken(token, data.expires_in);
 
-      setToken(data.token);
-      set({ user: data.user, loading: false });
-
-      return data.user;
+  
+      set({
+        user,
+        loading: false,
+      });
+      return user;
     } catch (e) {
       set({ loading: false });
       throw e;
     }
   },
+  
 
   loadUser: async () => {
     try {
-      set({ loading: true });
-
       const { data } = await api.get("/me");
 
-      set({ user: data.user, loading: false });
-      return data.user;
+      set({ user: data });
+      return data;
     } catch {
-      clearToken();
-      set({ user: null, loading: false });
-      return null;
-    }
-  },
-
-  logout: async () => {
-    try {
-      await api.post("/logout");
-    } finally {
       clearToken();
       set({ user: null });
     }
+  },
+
+  logout: () => {
+    clearToken();
+    set({ user: null });
   },
 }));

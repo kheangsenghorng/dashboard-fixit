@@ -6,24 +6,23 @@ export function middleware(request) {
   const token = request.cookies.get("token")?.value;
 
   const isLoginPage = pathname === "/login";
+  const isAdmin = pathname.startsWith("/admin");
 
-  // "/" and "/admin" are protected
-  const isProtected =
-    pathname === "/" || pathname.startsWith("/admin/dashboard");
-
-  // Not logged in → protected page
-  if (!token && isProtected) {
-    return NextResponse.redirect(new URL("/login", request.url));
+  // Not logged in → admin page
+  if (!token && isAdmin) {
+    const loginUrl = new URL("/login", request.url);
+    loginUrl.searchParams.set("redirect", pathname);
+    return NextResponse.redirect(loginUrl);
   }
 
   // Logged in → login page
   if (token && isLoginPage) {
-    return NextResponse.redirect(new URL("/", request.url));
+    return NextResponse.redirect(new URL("/admin/dashboard", request.url));
   }
 
   return NextResponse.next();
 }
 
 export const config = {
-  matcher: ["/", "/login", "/admin/:path*"],
+  matcher: ["/login", "/admin/:path*"],
 };
