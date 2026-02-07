@@ -1,3 +1,5 @@
+"use client";
+
 import { TrendingUp, TrendingDown, DollarSign, Users, MousePointer2, ShoppingBag } from "lucide-react";
 
 // 1. STATS CARD

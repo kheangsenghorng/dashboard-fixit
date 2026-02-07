@@ -1,5 +1,6 @@
 "use client";
-import React, { useState } from 'react';
+import React, { useState, useEffect } from "react";
+import { useAuthGuard } from "../../hooks/useAuthGuard";
 
 import { 
   Package, 
@@ -27,7 +28,15 @@ const initialProducts = [
 ];
 
 export default function ProductsPage() {
+    const [mounted, setMounted] = useState(false);
+    useEffect(() => {
+      setMounted(true);
+    }, []);
+  const { user } = useAuthGuard();
   const [searchTerm, setSearchTerm] = useState('');
+
+  if (!mounted || !user) return null;
+
 
   return (
 

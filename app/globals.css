@@ -1,26 +1,83 @@
 @import "tailwindcss";
 
 :root {
-  --background: #ffffff;
-  --foreground: #171717;
+  /* Flutter Colors */
+  --primary: #0056D2;
+  --secondary: #FF6B00;
+  --scaffold: #002B5B;
+  --surface: #FFFFFF;
+  --surface-highest: #EFF6FF; /* blue.50 */
+  
+  /* Text Colors */
+  --text-display: #002B5B; /* displayLarge/headlineMedium */
+  --text-primary: rgba(0, 0, 0, 0.87); /* bodyLarge */
+  --text-secondary: rgba(0, 0, 0, 0.54); /* bodyMedium */
+  
+  /* Inputs */
+  --input-fill: #F9FAFB;
+  --input-border: #E5E7EB;
 }
 
 @theme inline {
-  --color-background: var(--background);
-  --color-foreground: var(--foreground);
-  --font-sans: var(--font-geist-sans);
-  --font-mono: var(--font-geist-mono);
+  /* Map CSS Variables to Tailwind Utility Classes */
+  --color-primary: var(--primary);
+  --color-secondary: var(--secondary);
+  --color-scaffold: var(--scaffold);
+  --color-surface: var(--surface);
+  --color-surface-highest: var(--surface-highest);
+  
+  --color-text-display: var(--text-display);
+  --color-text-main: var(--text-primary);
+  --color-text-muted: var(--text-secondary);
+
+  --radius-button: 8px; /* elevatedButtonTheme */
+  --radius-input: 12px; /* inputDecorationTheme */
 }
 
-@media (prefers-color-scheme: dark) {
-  :root {
-    --background: #0a0a0a;
-    --foreground: #ededed;
-  }
-}
-
+/* Base Styles mimicking Flutter's default behavior */
 body {
-  background: var(--background);
-  color: var(--foreground);
+  background-color: var(--scaffold);
+  color: var(--text-primary);
   font-family: Arial, Helvetica, sans-serif;
+  margin: 0;
+  padding: 0;
+}
+
+/* Flutter textTheme Mapping */
+h1 { font-size: 32px; font-weight: bold; color: var(--text-display); }
+h2 { font-size: 20px; font-weight: 600; color: var(--text-display); }
+p { font-size: 16px; color: var(--text-primary); }
+small { font-size: 14px; color: var(--text-secondary); }
+
+/* Flutter-style ElevatedButton Utility */
+.btn-elevated {
+  background-color: var(--primary);
+  color: white;
+  border-radius: var(--radius-button);
+  padding: 16px;
+  font-weight: 600;
+  font-size: 14px;
+  text-align: center;
+  transition: all 0.2s;
+  border: none;
+  cursor: pointer;
+}
+
+.btn-elevated:active {
+  transform: scale(0.98);
+  opacity: 0.9;
+}
+
+/* Flutter-style InputDecoration Utility */
+.input-flutter {
+  background-color: var(--input-fill);
+  border: 1px solid var(--input-border);
+  border-radius: var(--radius-input);
+  padding: 12px 16px;
+  outline: none;
+  transition: all 0.2s;
+}
+
+.input-flutter:focus {
+  border: 2px solid var(--primary);
 }

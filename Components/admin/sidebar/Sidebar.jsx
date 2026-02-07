@@ -1,14 +1,16 @@
 "use client";
 import React, { useState, useEffect } from 'react';
 import Link from 'next/link';
-import { usePathname } from 'next/navigation';
+import { usePathname, useRouter } from "next/navigation";
 import { 
   LayoutDashboard, UserPlus, Wrench, HardHat, Users, Layers, 
   Package, Settings, Plus, ChevronDown, LogOut, ShieldCheck, 
   BarChart4, Briefcase, Bell, X, ChevronRight,
   Wallet, FileText, Ticket, Star, MessageSquare,
+  Building2 as Company,
   TableProperties, List // Added for Table views
 } from 'lucide-react';
+import { useAuthStore } from '../../../app/store/useAuthStore';
 
 const adminGroups = [
   {
@@ -21,7 +23,8 @@ const adminGroups = [
   {
     title: "Account Management",
     items: [
-      { name: 'Customers/Users', href: '/admin/users', icon: Users },
+      { name: 'Customers', href: '/admin/users', icon: Users },
+      { name: 'Company', href: '/admin/company', icon: Company },
       { name: 'Service Providers', href: '/admin/providers', icon: HardHat },
     ]
   },
@@ -52,16 +55,21 @@ const adminGroups = [
 
 export default function AdminSidebar({ isOpen, toggleSidebar }) {
   const pathname = usePathname();
+  const router = useRouter();
+
   
   // State for Create Dropdowns
   const [isCreateOpen, setIsCreateOpen] = useState(false);
   const [categorySubOpen, setCategorySubOpen] = useState(false);
   const [productSubOpen, setProductSubOpen] = useState(false);
+  const { logout, loading } = useAuthStore();
+
 
   // State for Table Dropdowns
   const [isTableOpen, setIsTableOpen] = useState(false);
   const [tableCategorySubOpen, setTableCategorySubOpen] = useState(false);
   const [tableProductSubOpen, setTableProductSubOpen] = useState(false);
+  const [mounted, setMounted] = React.useState(false);
 
   // Helper to close one when opening the other
   const toggleCreate = () => {
@@ -85,6 +93,12 @@ export default function AdminSidebar({ isOpen, toggleSidebar }) {
         setTableProductSubOpen(false);
     }
   }, [isCreateOpen, isTableOpen]);
+
+  useEffect(() => {
+    setMounted(true);
+  }, []);
+  
+  if (!mounted) return null;
 
   return (
     <>
@@ -138,7 +152,7 @@ export default function AdminSidebar({ isOpen, toggleSidebar }) {
 
             {isCreateOpen && (
               <div className="absolute top-full left-0 w-full mt-2 bg-white border border-slate-200 rounded-xl overflow-hidden shadow-xl z-30 animate-in fade-in slide-in-from-top-2 max-h-[400px] overflow-y-auto">
-                <Link href="/admin/create/user" className="flex items-center gap-2 px-4 py-3 text-sm text-slate-600 hover:bg-indigo-50 hover:text-indigo-600 transition-colors border-b border-slate-50">
+                <Link href="/admin/create/users" className="flex items-center gap-2 px-4 py-3 text-sm text-slate-600 hover:bg-indigo-50 hover:text-indigo-600 transition-colors border-b border-slate-50">
                   <UserPlus size={16} /> New User
                 </Link>
                 <Link href="/admin/create/provider" className="flex items-center gap-2 px-4 py-3 text-sm text-slate-600 hover:bg-indigo-50 hover:text-indigo-600 transition-colors border-b border-slate-50">
@@ -280,9 +294,22 @@ export default function AdminSidebar({ isOpen, toggleSidebar }) {
             <Link href="/admin/settings" className="p-2 text-slate-400 hover:text-indigo-600 transition-colors">
               <Settings size={18} />
             </Link>
-            <button className="p-2 text-slate-400 hover:text-rose-500 transition-colors">
-              <LogOut size={18} />
-            </button>
+            <button
+          onClick={async () => {
+            await logout();
+            router.push("/login");
+          }}
+          disabled={loading}
+          className={`p-2 transition-colors ${
+            loading
+              ? "text-slate-300 cursor-not-allowed"
+              : "text-slate-400 hover:text-rose-500"
+          }`}
+        >
+          <LogOut size={18} />
+        </button>
+
+
           </div>
         </div>
       </aside>

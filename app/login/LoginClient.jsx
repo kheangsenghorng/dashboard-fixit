@@ -1,5 +1,7 @@
 "use client";
 
+import { useState } from "react";
+import { LoadingCard } from "../../Components/LoadingCard";
 import { useAuthHandler } from "../hooks/useAuthHandler";
 import { useGuestGuard } from "../hooks/useGuestGuard";
 import { Mail, Lock, Loader2, LogIn } from "lucide-react";
@@ -16,6 +18,24 @@ export default function Login() {
     handleLogin,
   } = useAuthHandler();
 
+  // Page-level loading (optional)
+  const [isPageLoading] = useState(false);
+
+  const onSubmit = async (e) => {
+    e.preventDefault();
+    if (loading) return;
+    await handleLogin();
+  };
+
+  // Full-page loader (optional)
+  if (isPageLoading) {
+    return (
+      <main className="min-h-screen flex items-center justify-center bg-scaffold p-6">
+        <LoadingCard />
+      </main>
+    );
+  }
+
   return (
     <div className="min-h-screen flex items-center justify-center bg-gradient-to-br from-blue-50 to-indigo-100 p-4">
       <div className="w-full max-w-md bg-white rounded-2xl shadow-xl p-8 space-y-6">
@@ -25,11 +45,12 @@ export default function Login() {
           <div className="inline-flex items-center justify-center w-16 h-16 bg-indigo-600 rounded-full mb-2">
             <LogIn className="text-white w-8 h-8" />
           </div>
+
           <h1 className="text-3xl font-bold text-gray-900">Welcome Back</h1>
           <p className="text-gray-500">Please enter your details to sign in</p>
         </div>
 
-        <div className="space-y-4">
+        <form onSubmit={onSubmit} className="space-y-4">
 
           {/* Login Field */}
           <div className="space-y-2">
@@ -47,7 +68,8 @@ export default function Login() {
                 placeholder="Email or phone"
                 value={login}
                 onChange={(e) => setLogin(e.target.value)}
-                suppressHydrationWarning={true} // <--- Add this line
+                autoComplete="username"
+                required
                 className="block w-full pl-10 pr-3 py-3 border border-gray-300 rounded-xl bg-gray-50 focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500 transition-all outline-none text-gray-900"
               />
             </div>
@@ -69,15 +91,17 @@ export default function Login() {
                 placeholder="••••••••"
                 value={password}
                 onChange={(e) => setPassword(e.target.value)}
+                autoComplete="current-password"
+                required
                 className="block w-full pl-10 pr-3 py-3 border border-gray-300 rounded-xl bg-gray-50 focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500 transition-all outline-none text-gray-900"
               />
             </div>
           </div>
 
           <button
+            type="submit"
             disabled={loading}
-            onClick={handleLogin}
-            className="w-full flex items-center justify-center py-3 px-4 rounded-xl text-white bg-indigo-600 hover:bg-indigo-700 font-semibold disabled:opacity-70"
+            className="w-full flex items-center justify-center py-3 px-4 rounded-xl text-white bg-indigo-600 hover:bg-indigo-700 font-semibold disabled:opacity-70 transition"
           >
             {loading ? (
               <>
@@ -88,7 +112,8 @@ export default function Login() {
               "Sign In"
             )}
           </button>
-        </div>
+
+        </form>
       </div>
     </div>
   );
