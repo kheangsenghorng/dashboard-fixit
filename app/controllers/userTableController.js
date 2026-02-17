@@ -1,4 +1,4 @@
-// userTableController.js
+// app/controllers/userTableController.js
 import { toast } from "react-toastify";
 
 export const createUserTableController = ({
@@ -6,17 +6,27 @@ export const createUserTableController = ({
   meta,
   setSelectedIds,
   fetchUsers,
-  deleteMany, // Ensure this is passed
   updateManyStatus,
-  fetchFiltersIsActiveFalse,
   setSearchTerm,
+  currentUser,
 }) => {
   const resetSelection = () => setSelectedIds([]);
+
+  // ✅ base params: admin sees all; others restricted to their role
+  const baseParams = () => {
+    if (!currentUser) return {};
+    if (currentUser.role === "admin") return {};
+    return { role: currentUser.role };
+  };
+
+  const fetchWithRole = (params = {}) => {
+    return fetchUsers({ ...baseParams(), ...params });
+  };
 
   const handlePageChange = (page) => {
     if (page < 1 || page > meta?.last_page) return;
     resetSelection();
-    fetchUsers({ page });
+    fetchWithRole({ page });
   };
 
   const toggleSelectAll = () => {
@@ -37,32 +47,30 @@ export const createUserTableController = ({
       await updateManyStatus({ ids, is_active: status });
       toast.success(status ? "Users activated" : "Users deactivated");
       resetSelection();
-      fetchUsers({ page: meta?.current_page || 1 });
+      fetchWithRole({ page: meta?.current_page || 1 });
     } catch {
       toast.error("Failed to update status");
     }
   };
 
   const handleFilterInactive = async () => {
-    await fetchFiltersIsActiveFalse({ page: 1 });
+    await fetchWithRole({ page: 1, is_active: false });
     resetSelection();
   };
 
   const handleFilterActive = async () => {
-    await fetchUsers({ page: 1, is_active: true });
+    await fetchWithRole({ page: 1, is_active: true });
     resetSelection();
   };
 
   const handleClearFilter = async () => {
-    await fetchUsers({ page: 1 });
+    await fetchWithRole({ page: 1 });
     resetSelection();
   };
 
-  // Improved Search Logic: Removed the timeout from here. 
-  // It's better to handle debouncing in the component or via a hook.
   const handleSearchNameEmail = (value) => {
     setSearchTerm(value);
-    fetchUsers({ page: 1 }); 
+    fetchWithRole({ page: 1 });
   };
 
   return {
@@ -74,6 +82,6 @@ export const createUserTableController = ({
     handleFilterActive,
     handleClearFilter,
     handleSearchNameEmail,
-    resetSelection, // Exported to use in component
+    resetSelection,
   };
 };

@@ -155,6 +155,9 @@ export default function AdminSidebar({ isOpen, toggleSidebar }) {
                 <Link href="/admin/create/users" className="flex items-center gap-2 px-4 py-3 text-sm text-slate-600 hover:bg-indigo-50 hover:text-indigo-600 transition-colors border-b border-slate-50">
                   <UserPlus size={16} /> New User
                 </Link>
+                <Link href="/admin/create/company" className="flex items-center gap-2 px-4 py-3 text-sm text-slate-600 hover:bg-indigo-50 hover:text-indigo-600 transition-colors border-b border-slate-50">
+                  <Company size={16} /> New Company
+                </Link>
                 <Link href="/admin/create/provider" className="flex items-center gap-2 px-4 py-3 text-sm text-slate-600 hover:bg-indigo-50 hover:text-indigo-600 transition-colors border-b border-slate-50">
                   <HardHat size={16} /> New Provider
                 </Link>
@@ -208,6 +211,9 @@ export default function AdminSidebar({ isOpen, toggleSidebar }) {
               <div className="absolute top-full left-0 w-full mt-2 bg-white border border-slate-200 rounded-xl overflow-hidden shadow-xl z-30 animate-in fade-in slide-in-from-top-2 max-h-[400px] overflow-y-auto">
                 <Link href="/admin/users" className="flex items-center gap-2 px-4 py-3 text-sm text-slate-600 hover:bg-blue-50 hover:text-blue-600 transition-colors border-b border-slate-50">
                   <Users size={16} /> Users List
+                </Link>
+                <Link href="/admin/company" className="flex items-center gap-2 px-4 py-3 text-sm text-slate-600 hover:bg-blue-50 hover:text-blue-600 transition-colors border-b border-slate-50">
+                  <Company size={16} /> Company List
                 </Link>
                 <Link href="/admin/providers" className="flex items-center gap-2 px-4 py-3 text-sm text-slate-600 hover:bg-blue-50 hover:text-blue-600 transition-colors border-b border-slate-50">
                   <HardHat size={16} /> Providers List

@@ -1,12 +1,15 @@
-"use client";
+'use client';
 
 import { useState } from "react";
-import { LoadingCard } from "../../Components/LoadingCard";
+import { useSearchParams } from "next/navigation";
 import { useAuthHandler } from "../hooks/useAuthHandler";
 import { useGuestGuard } from "../hooks/useGuestGuard";
 import { Mail, Lock, Loader2, LogIn } from "lucide-react";
+import LoadingCard from "../../Components/LoadingCard";
 
-export default function Login() {
+export default function LoginClient() {
+  const searchParams = useSearchParams();
+  const redirect = searchParams.get("redirect");
   useGuestGuard("/admin/dashboard");
 
   const {
@@ -18,7 +21,6 @@ export default function Login() {
     handleLogin,
   } = useAuthHandler();
 
-  // Page-level loading (optional)
   const [isPageLoading] = useState(false);
 
   const onSubmit = async (e) => {
@@ -27,7 +29,6 @@ export default function Login() {
     await handleLogin();
   };
 
-  // Full-page loader (optional)
   if (isPageLoading) {
     return (
       <main className="min-h-screen flex items-center justify-center bg-scaffold p-6">

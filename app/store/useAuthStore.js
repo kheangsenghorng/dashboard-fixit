@@ -23,21 +23,46 @@ export const useAuthStore = create((set) => ({
     set({ loading: true, error: null });
 
     try {
-      const { data } = await api.post("/login", { login, password });
+      const { data } = await api.post("/login", {
+        login,
+        password,
+      });
 
-      setToken(data.access_token, data.expires_in);
+      /**
+       * Expected API response:
+       * {
+       *   access_token: "xxxx",
+       *   user: {
+       *     id: 1,
+       *     name: "Admin",
+       *     role: "admin"
+       *   }
+       * }
+       */
+
+      const token = data.access_token;
+      const user = data.user;
+
+      // Save token + role for middleware
+      setToken(token, user.role);
 
       set({
-        user: data.user,
+        user,
         loading: false,
       });
 
-      return data.user;
+      return user;
     } catch (e) {
+      const message =
+        e.response?.data?.message ||
+        e.response?.data ||
+        "Login failed";
+
       set({
         loading: false,
-        error: e.response?.data || "Login failed",
+        error: message,
       });
+
       throw e;
     }
   },

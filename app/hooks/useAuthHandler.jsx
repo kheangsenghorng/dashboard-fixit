@@ -8,7 +8,7 @@ export function useAuthHandler() {
   const router = useRouter();
   const params = useSearchParams();
 
-  const redirect = params.get("redirect") || "/admin/dashboard";
+  const redirect = params.get("redirect");
 
   const loginAction = useAuthStore((s) => s.login);
   const loading = useAuthStore((s) => s.loading);
@@ -20,11 +20,20 @@ export function useAuthHandler() {
     try {
       const user = await loginAction(login, password);
 
-      console.log("🎯 Redirecting to:", redirect);
+      // Redirect to requested page
+      if (redirect) {
+        router.replace(redirect);
+        return;
+      }
 
-      router.replace(redirect);
+      // Default role redirect
+      if (user.role === "admin") {
+        router.replace("/admin/dashboard");
+      } else if (user.role === "owner") {
+        router.replace("/owner/dashboard");
+      }
     } catch (e) {
-      console.error("Login failed");
+      alert("Login failed");
     }
   };
 

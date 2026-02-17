@@ -7,25 +7,29 @@ export const useUsersStore = create((set, get) => ({
   users: [],
   user: null,
   meta: null,
-  loading: false,
+  isLoading: false,
   error: null,
   searchTerm: "",
 
+  // ------------------
+  // State helpers
+  // ------------------
   setSearchTerm: (term) => set({ searchTerm: term }),
 
   withLoading: async (fn) => {
-    set({ loading: true, error: null });
+    set({ isLoading: true, error: null });
     try {
       await fn();
     } catch (e) {
       set({ error: e.response?.data || e });
       throw e;
     } finally {
-      set({ loading: false });
+      set({ isLoading: false });
     }
   },
+
   // ------------------
-  // Actions create users
+  // Create user
   // ------------------
   createUser: async (payload) =>
     get().withLoading(async () => {
@@ -34,39 +38,66 @@ export const useUsersStore = create((set, get) => ({
         email: payload.email || null,
         phone: payload.phone || null,
       };
-  
+
       const { data } = await api.post("/users", cleanPayload);
-  
+
       set((state) => ({
         users: [data.data, ...state.users],
       }));
-  
+
       return data.data;
     }),
-  
 
-  fetchUsers: async (params = {}) =>
+  // ------------------
+  // Generic fetch by role
+  // ------------------
+  fetchUsersAll: async (params = {}) =>
     get().withLoading(async () => {
-      const { searchTerm, lastSyncAt } = get();
-
+      const { searchTerm } = get();
+  
       const { data } = await api.get("/users", {
         params: {
-          role: "customer",
           search: searchTerm || undefined,
-          updated_after: lastSyncAt || undefined,
           ...params,
         },
       });
-
+  
       set({
-        users: params.updated_after
-          ? [...get().users, ...data.data] // append updates
-          : data.data,
+        users: data.data,
         meta: data.meta,
-        lastSyncAt: data.meta?.last_sync_at ?? lastSyncAt,
       });
     }),
+  
+  fetchUsersByRole: async (role, params = {}) =>
+    get().withLoading(async () => {
+      const { searchTerm } = get();
+  
+      const { data } = await api.get("/users", {
+        params: {
+          role,
+          search: searchTerm || undefined,
+          ...params,
+        },
+      });
+  
+      set({
+        users: data.data,
+        meta: data.meta,
+      });
+    }),
+  
+  // ------------------
+  // Specific fetchers
+  // ------------------
+  fetchUsers: (params = {}) =>
+    get().fetchUsersByRole("customer", params),
 
+  fetchUsersOwner: (params = {}) =>
+    get().fetchUsersByRole("owner", params),
+
+  // ------------------
+  // Filter inactive users
+  // ------------------
   fetchFiltersIsActiveFalse: async (params = {}) =>
     get().withLoading(async () => {
       const { data } = await api.get("/users", {
@@ -79,28 +110,101 @@ export const useUsersStore = create((set, get) => ({
       });
     }),
 
-    deleteMany: async (ids) =>
-      get().withLoading(async () => {
-        if (!ids || !ids.length) return;
-    
-        await api.delete("/users/bulk", {
-          data: { ids },
-        });
-    
-        set((state) => ({
-          users: state.users.filter((u) => !ids.includes(u.id)),
-        }));
-      }),    
-    
-
-  updateManyStatus: async (payload) =>
+  // ------------------
+  // Bulk delete
+  // ------------------
+  deleteMany: async (ids) =>
     get().withLoading(async () => {
-      const { data } = await api.patch("/users/status/bulk", payload);
+      if (!ids || !ids.length) return;
+
+      await api.delete("/users/bulk", {
+        data: { ids },
+      });
 
       set((state) => ({
-        users: state.users.map(
-          (u) => data.users.find((x) => x.id === u.id) || u
-        ),
+        users: state.users.filter((u) => !ids.includes(u.id)),
       }));
+    }),
+
+  // ------------------
+  // Bulk status update
+  // ------------------
+  updateManyStatus: async (payload) =>
+    get().withLoading(async () => {
+      await api.patch("/users/status/bulk", payload);
+  
+      // refetch current page to keep data consistent
+      const { meta, searchTerm } = get();
+  
+      await get().fetchUsersOwner({
+        page: meta?.current_page || 1,
+        search: searchTerm || undefined,
+      });
+    }),
+  
+  
+
+  // ------------------
+  // Update single user
+  // ------------------
+  updateUser: async (id, payload) =>
+    get().withLoading(async () => {
+      const cleanPayload = {
+        name: payload.name,
+        email: payload.email || null,
+        phone: payload.phone || null,
+        role: payload.role,
+        is_active: payload.is_active,
+      };
+
+      const { data } = await api.put(`/users/${id}`, cleanPayload);
+      const updatedUser = data.user;
+
+      set((state) => ({
+        users: state.users.map((u) =>
+          u.id === updatedUser.id ? updatedUser : u
+        ),
+        user:
+          state.user && state.user.id === updatedUser.id
+            ? updatedUser
+            : state.user,
+      }));
+
+      return updatedUser;
+    }),
+
+  // ------------------
+  // Fetch single user
+  // ------------------
+  fetchUser: async (id) =>
+    get().withLoading(async () => {
+      const { data } = await api.get(`/users/${id}`);
+
+      set({
+        user: data.user,
+      });
+
+      return data.user;
+    }),
+
+  // ------------------
+  // Update avatar
+  // ------------------
+  updateAvatar: async (id, file) =>
+    get().withLoading(async () => {
+      const formData = new FormData();
+      formData.append("avatar", file);
+
+      const { data } = await api.post(
+        `/users/${id}/avatar`,
+        formData,
+        {
+          headers: {
+            "Content-Type": "multipart/form-data",
+          },
+        }
+      );
+
+      return data.user;
     }),
 }));
