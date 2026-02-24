@@ -1,46 +1,55 @@
+// ==============================
+// Navbar.jsx / Navbar.tsx
+// ==============================
 "use client";
-import React from 'react';
-import { Menu, Search, Bell, ChevronDown } from 'lucide-react';
 
-export default function Navbar({ toggleSidebar }) {
+import React from "react";
+import { Menu, Search, Bell, ChevronDown } from "lucide-react";
+
+export default function Navbar({ toggleSidebar, user }) {
   return (
-    <header className="h-20 bg-white border-b border-gray-200 flex items-center justify-between px-6 sticky top-0 z-30">
-      <div className="flex items-center">
-        {/* Toggle Button for Mobile - Calls the toggleSidebar function */}
-        <button 
-          onClick={toggleSidebar} 
-          className="p-2 mr-4 text-gray-600 lg:hidden hover:bg-gray-100 rounded-md transition-colors"
+    <header className="h-20 bg-white/70 backdrop-blur-xl border-b border-slate-200/60 flex items-center justify-between px-8 sticky top-0 z-40">
+      <div className="flex items-center gap-6">
+        <button
+          onClick={toggleSidebar}
+          className="p-2.5 text-slate-600 hover:bg-slate-100 rounded-2xl transition-all border border-slate-100"
+          aria-label="Toggle sidebar"
         >
-          <Menu size={24} />
+          <Menu size={20} />
         </button>
-        
-        {/* Search Input (Hidden on extra small screens) */}
-        <div className="relative hidden md:block">
-          <span className="absolute inset-y-0 left-0 flex items-center pl-3 text-gray-400">
-            <Search size={18} />
-          </span>
-          <input 
-            type="text" 
-            placeholder="Search dashboard..." 
-            className="pl-10 pr-4 py-2 border border-gray-200 rounded-xl focus:outline-none focus:ring-2 focus:ring-blue-500/20 focus:border-blue-500 w-80 bg-gray-50 transition-all"
+
+        <div className="relative hidden md:flex items-center group">
+          <Search className="absolute left-4 text-slate-400" size={16} />
+          <input
+            type="text"
+            placeholder="Search commands..."
+            className="pl-12 pr-16 py-2.5 bg-slate-100/40 border border-transparent rounded-[14px] text-sm w-80 focus:bg-white focus:border-indigo-100 transition-all outline-none"
           />
         </div>
       </div>
 
-      <div className="flex items-center space-x-3">
-        {/* Notifications */}
-        <button className="p-2 text-gray-500 hover:bg-gray-100 rounded-full relative transition-colors">
+      <div className="flex items-center gap-4">
+        <button className="p-3 text-slate-500 hover:bg-white hover:border-slate-200 border border-transparent rounded-2xl transition-all relative">
           <Bell size={20} />
-          <span className="absolute top-2 right-2.5 w-2 h-2 bg-red-500 rounded-full border-2 border-white"></span>
+          <span className="absolute top-3 right-3 w-2 h-2 rounded-full border-2 border-white bg-rose-500"></span>
         </button>
 
-        {/* Profile Dropdown Placeholder */}
-        <div className="flex items-center space-x-2 cursor-pointer hover:bg-gray-50 p-2 rounded-lg transition-colors">
-          <div className="w-8 h-8 bg-slate-200 rounded-lg flex items-center justify-center text-slate-700 font-semibold text-xs">
-            AD
+        <div className="h-6 w-[1px] bg-slate-200 mx-1" />
+
+        <button className="flex items-center gap-3 p-1.5 pr-4 rounded-2xl border border-slate-100 bg-slate-50 hover:bg-white transition-all shadow-sm group">
+          <div className="w-9 h-9 rounded-xl bg-slate-800 flex items-center justify-center text-white font-bold text-xs">
+            {user?.name?.charAt(0) || "A"}
           </div>
-          <ChevronDown size={14} className="text-gray-400" />
-        </div>
+          <div className="hidden sm:block text-left">
+            <p className="text-[13px] font-bold text-slate-900 leading-none">
+              Admin
+            </p>
+            <span className="text-[9px] font-black uppercase text-slate-400">
+              System Admin
+            </span>
+          </div>
+          <ChevronDown size={14} className="text-slate-400" />
+        </button>
       </div>
     </header>
   );

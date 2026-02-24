@@ -1,27 +1,31 @@
 "use client";
 
 import { create } from "zustand";
-import api from "@/lib/api"; // adjust path to your axios instance
+import api from "@/lib/api";
 
 export const useUsersStore = create((set, get) => ({
   users: [],
   user: null,
   meta: null,
+  counts: null, // ✅ { owners, customers, providers, total }
   isLoading: false,
   error: null,
-  searchTerm: "",
 
-  // ------------------
-  // State helpers
-  // ------------------
+  // UI state
+  searchTerm: "",
+  lastParams: {}, // ✅ remember last query params so refetch is easy
+
+
+  
+
   setSearchTerm: (term) => set({ searchTerm: term }),
 
   withLoading: async (fn) => {
     set({ isLoading: true, error: null });
     try {
-      await fn();
+      return await fn();
     } catch (e) {
-      set({ error: e.response?.data || e });
+      set({ error: e?.response?.data || e });
       throw e;
     } finally {
       set({ isLoading: false });
@@ -29,7 +33,37 @@ export const useUsersStore = create((set, get) => ({
   },
 
   // ------------------
-  // Create user
+  // FETCH USERS (single source of truth)
+  // params: { page, role, is_active, per_page, updated_after, search }
+  // role supports: "all" | "owner" | "customer" | "provider"
+  // ------------------
+  fetchUsers: async (params = {}) =>
+    get().withLoading(async () => {
+      const { searchTerm } = get();
+
+      const merged = {
+        search: params.search ?? searchTerm ?? undefined,
+        ...params,
+      };
+
+      // if role = "all" -> don't send role
+      // backend should treat missing role as all allowed roles
+      if (merged.role === "all") delete merged.role;
+
+      const { data } = await api.get("/users", { params: merged });
+
+      set({
+        users: data.data || [],
+        meta: data.meta || null,
+        counts: data.counts || null,
+        lastParams: merged,
+      });
+
+      return data;
+    }),
+
+  // ------------------
+  // CREATE USER
   // ------------------
   createUser: async (payload) =>
     get().withLoading(async () => {
@@ -41,111 +75,40 @@ export const useUsersStore = create((set, get) => ({
 
       const { data } = await api.post("/users", cleanPayload);
 
-      set((state) => ({
-        users: [data.data, ...state.users],
-      }));
+      // Optional: refetch to keep counts/meta accurate
+      await get().fetchUsers({ ...get().lastParams, page: 1 });
 
       return data.data;
     }),
 
   // ------------------
-  // Generic fetch by role
+  // BULK DELETE
   // ------------------
-  fetchUsersAll: async (params = {}) =>
+  deleteMany: async (ids = []) =>
     get().withLoading(async () => {
-      const { searchTerm } = get();
-  
-      const { data } = await api.get("/users", {
-        params: {
-          search: searchTerm || undefined,
-          ...params,
-        },
-      });
-  
-      set({
-        users: data.data,
-        meta: data.meta,
-      });
-    }),
-  
-  fetchUsersByRole: async (role, params = {}) =>
-    get().withLoading(async () => {
-      const { searchTerm } = get();
-  
-      const { data } = await api.get("/users", {
-        params: {
-          role,
-          search: searchTerm || undefined,
-          ...params,
-        },
-      });
-  
-      set({
-        users: data.data,
-        meta: data.meta,
-      });
-    }),
-  
-  // ------------------
-  // Specific fetchers
-  // ------------------
-  fetchUsers: (params = {}) =>
-    get().fetchUsersByRole("customer", params),
+      if (!ids.length) return;
 
-  fetchUsersOwner: (params = {}) =>
-    get().fetchUsersByRole("owner", params),
+      await api.delete("/users/bulk", { data: { ids } });
 
-  // ------------------
-  // Filter inactive users
-  // ------------------
-  fetchFiltersIsActiveFalse: async (params = {}) =>
-    get().withLoading(async () => {
-      const { data } = await api.get("/users", {
-        params: { ...params, is_active: false },
-      });
-
-      set({
-        users: data.data,
-        meta: data.meta,
-      });
+      // refetch to keep meta + counts correct
+      const { meta, lastParams } = get();
+      await get().fetchUsers({ ...lastParams, page: meta?.current_page || 1 });
     }),
 
   // ------------------
-  // Bulk delete
-  // ------------------
-  deleteMany: async (ids) =>
-    get().withLoading(async () => {
-      if (!ids || !ids.length) return;
-
-      await api.delete("/users/bulk", {
-        data: { ids },
-      });
-
-      set((state) => ({
-        users: state.users.filter((u) => !ids.includes(u.id)),
-      }));
-    }),
-
-  // ------------------
-  // Bulk status update
+  // BULK STATUS UPDATE
+  // payload: { ids: [], is_active: true|false }
   // ------------------
   updateManyStatus: async (payload) =>
     get().withLoading(async () => {
       await api.patch("/users/status/bulk", payload);
-  
-      // refetch current page to keep data consistent
-      const { meta, searchTerm } = get();
-  
-      await get().fetchUsersOwner({
-        page: meta?.current_page || 1,
-        search: searchTerm || undefined,
-      });
+
+      const { meta, lastParams } = get();
+      await get().fetchUsers({ ...lastParams, page: meta?.current_page || 1 });
     }),
-  
-  
 
   // ------------------
-  // Update single user
+  // UPDATE USER
   // ------------------
   updateUser: async (id, payload) =>
     get().withLoading(async () => {
@@ -158,52 +121,39 @@ export const useUsersStore = create((set, get) => ({
       };
 
       const { data } = await api.put(`/users/${id}`, cleanPayload);
-      const updatedUser = data.user;
 
-      set((state) => ({
-        users: state.users.map((u) =>
-          u.id === updatedUser.id ? updatedUser : u
-        ),
-        user:
-          state.user && state.user.id === updatedUser.id
-            ? updatedUser
-            : state.user,
-      }));
-
-      return updatedUser;
-    }),
-
-  // ------------------
-  // Fetch single user
-  // ------------------
-  fetchUser: async (id) =>
-    get().withLoading(async () => {
-      const { data } = await api.get(`/users/${id}`);
-
-      set({
-        user: data.user,
-      });
+      // refetch to keep counts correct if role/status changed
+      const { meta, lastParams } = get();
+      await get().fetchUsers({ ...lastParams, page: meta?.current_page || 1 });
 
       return data.user;
     }),
 
   // ------------------
-  // Update avatar
+  // FETCH SINGLE USER
+  // ------------------
+  fetchUser: async (id) =>
+    get().withLoading(async () => {
+      const { data } = await api.get(`/users/${id}`);
+      set({ user: data.user });
+      return data.user;
+    }),
+
+  // ------------------
+  // UPDATE AVATAR
   // ------------------
   updateAvatar: async (id, file) =>
     get().withLoading(async () => {
       const formData = new FormData();
       formData.append("avatar", file);
 
-      const { data } = await api.post(
-        `/users/${id}/avatar`,
-        formData,
-        {
-          headers: {
-            "Content-Type": "multipart/form-data",
-          },
-        }
-      );
+      const { data } = await api.post(`/users/${id}/avatar`, formData, {
+        headers: { "Content-Type": "multipart/form-data" },
+      });
+
+      // optional: refresh list
+      const { meta, lastParams } = get();
+      await get().fetchUsers({ ...lastParams, page: meta?.current_page || 1 });
 
       return data.user;
     }),
