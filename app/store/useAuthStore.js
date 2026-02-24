@@ -70,7 +70,7 @@ export const useAuthStore = create((set) => ({
   loadUser: async () => {
     try {
       const { data } = await api.get("/me");
-      set({ user: data });
+      set({ user: data.user });
       return data;
     } catch {
       clearToken();

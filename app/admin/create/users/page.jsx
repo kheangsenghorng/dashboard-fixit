@@ -14,8 +14,10 @@ import AdminShell from "../../AdminShell";
 // --- Toast Imports ---
 import { ToastContainer, toast } from 'react-toastify';
 import 'react-toastify/dist/ReactToastify.css';
+import { useAuthGuard } from "../../../hooks/useAuthGuard";
 
 export default function CreateUserPage() {
+  const { user: authUser } = useAuthGuard();
   const router = useRouter();
   const [activeTab, setActiveTab] = useState("manual"); 
   const [errors, setErrors] = useState({});
@@ -82,6 +84,7 @@ export default function CreateUserPage() {
     }
   };
   
+  if (!authUser) return null;
   return (
     <AdminShell>
       <div className="p-6 text-slate-900">

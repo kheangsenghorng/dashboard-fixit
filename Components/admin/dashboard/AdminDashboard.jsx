@@ -10,13 +10,14 @@
   import StatCard from "./StatCard";
   import RecentUsers from "./RecentUsers";
   import ContentLoader from "../../ContentLoader";
-import { useRoleGuard } from "../../../app/hooks/useRoleGuard";
+
 
 
   export default function AdminDashboard() {
     const { user } = useAuthGuard();
+  
     const [showFullLoader, setShowFullLoader] = useState(true);
-    useRoleGuard(["admin"]);
+
 
     useEffect(() => {
       // Deliberate delay for premium feel
