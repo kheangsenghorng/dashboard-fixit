@@ -33,6 +33,7 @@ export default function OwnerFilterSystem({ model }) {
     activeCount,
     ownersUsers = [],
   } = model;
+  
 
   const Label = ({ children }) => (
     <label className="block text-[10px] font-black text-slate-400 mb-1.5 ml-0.5 uppercase tracking-[0.1em]">

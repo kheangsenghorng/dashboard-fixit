@@ -118,7 +118,15 @@ export default function OwnersPage() {
     if (authUser) initFetch();
   }, [fetchOwners, authUser]); // Removed buildParams from deps to avoid loop
 
-  
+
+  const ownersUsers = owners
+  .filter(o => o.user)
+  .map(o => ({
+    id: o.user.id,
+    name: o.user.name,
+    email: o.user.email,
+    business_name: o.business_name, // ✅ keep business name
+  }));
 
   const handleSearch = (value) => {
     setSearch(value);
@@ -250,7 +258,7 @@ export default function OwnersPage() {
         actions: { apply: applyFilters, reset: resetFilters },
         loading,
         activeCount: activeFilterCount,
-        ownersUsers: [],
+        ownersUsers: ownersUsers,
       }}
     />
 
@@ -329,14 +337,14 @@ export default function OwnersPage() {
               <td className="px-6 py-2.5 text-right">
                 <div className="flex justify-end gap-1 md:opacity-0 group-hover:opacity-100 transition-all">
                   <button
-                    onClick={() => router.push(`/admin/company/${item.id}`)}
+                    onClick={() => router.push(`/admin/company/view/${item.id}`)}
                     className="p-1.5 text-slate-400 hover:text-emerald-600 hover:bg-white rounded-md border border-transparent hover:border-slate-100 shadow-sm"
                     title="View Profile"
                   >
                     <Eye size={14} />
                   </button>
                   <button
-                    onClick={() => router.push(`/admin/company/owner-documents/owner_id=${item.id}`)}
+                    onClick={() => router.push(`/admin/company/owner-documents/${item.id}`)}
                     className="p-1.5 text-slate-400 hover:text-blue-600 hover:bg-white rounded-md border border-transparent hover:border-slate-100 shadow-sm"
                     title="Documents"
                   >
