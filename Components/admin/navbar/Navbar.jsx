@@ -1,55 +1,140 @@
-// ==============================
-// Navbar.jsx / Navbar.tsx
-// ==============================
 "use client";
 
-import React from "react";
-import { Menu, Search, Bell, ChevronDown } from "lucide-react";
+import React, { useState, useRef, useEffect } from "react";
+import {
+  Menu,
+  Search,
+  Bell,
+  ChevronDown,
+  Settings,
+  LogOut,
+  User as UserIcon,
+} from "lucide-react";
+import { motion, AnimatePresence } from "framer-motion";
+import Link from "next/link";
+import { useRouter } from "next/navigation";
+import { useAuthGuard } from "../../../app/hooks/useAuthGuard";
+import { useAuthStore } from "@/app/store/useAuthStore";
 
-export default function Navbar({ toggleSidebar, user }) {
+export default function Navbar({ toggleSidebar }) {
+  const [isDropdownOpen, setIsDropdownOpen] = useState(false);
+  const dropdownRef = useRef(null);
+  const router = useRouter();
+
+  const { user } = useAuthGuard();
+  const { logout, loading } = useAuthStore();
+
+  // Close dropdown when clicking outside
+  useEffect(() => {
+    function handleClickOutside(event) {
+      if (dropdownRef.current && !dropdownRef.current.contains(event.target)) {
+        setIsDropdownOpen(false);
+      }
+    }
+    document.addEventListener("mousedown", handleClickOutside);
+    return () =>
+      document.removeEventListener("mousedown", handleClickOutside);
+  }, []);
+
+  const handleLogout = async () => {
+    await logout();
+    router.push("/login");
+  };
+
   return (
     <header className="h-20 bg-white/70 backdrop-blur-xl border-b border-slate-200/60 flex items-center justify-between px-8 sticky top-0 z-40">
       <div className="flex items-center gap-6">
         <button
           onClick={toggleSidebar}
           className="p-2.5 text-slate-600 hover:bg-slate-100 rounded-2xl transition-all border border-slate-100"
-          aria-label="Toggle sidebar"
         >
           <Menu size={20} />
         </button>
 
-        <div className="relative hidden md:flex items-center group">
+        <div className="relative hidden md:flex items-center">
           <Search className="absolute left-4 text-slate-400" size={16} />
           <input
             type="text"
             placeholder="Search commands..."
-            className="pl-12 pr-16 py-2.5 bg-slate-100/40 border border-transparent rounded-[14px] text-sm w-80 focus:bg-white focus:border-indigo-100 transition-all outline-none"
+            className="pl-12 pr-16 py-2.5 bg-slate-100/40 rounded-[14px] text-sm w-80 focus:bg-white transition-all outline-none"
           />
         </div>
       </div>
 
       <div className="flex items-center gap-4">
-        <button className="p-3 text-slate-500 hover:bg-white hover:border-slate-200 border border-transparent rounded-2xl transition-all relative">
+        {/* Notification */}
+        <button className="p-3 text-slate-500 hover:bg-white rounded-2xl transition-all relative">
           <Bell size={20} />
           <span className="absolute top-3 right-3 w-2 h-2 rounded-full border-2 border-white bg-rose-500"></span>
         </button>
 
         <div className="h-6 w-[1px] bg-slate-200 mx-1" />
 
-        <button className="flex items-center gap-3 p-1.5 pr-4 rounded-2xl border border-slate-100 bg-slate-50 hover:bg-white transition-all shadow-sm group">
-          <div className="w-9 h-9 rounded-xl bg-slate-800 flex items-center justify-center text-white font-bold text-xs">
-            {user?.name?.charAt(0) || "A"}
-          </div>
-          <div className="hidden sm:block text-left">
-            <p className="text-[13px] font-bold text-slate-900 leading-none">
-              Admin
-            </p>
-            <span className="text-[9px] font-black uppercase text-slate-400">
-              System Admin
-            </span>
-          </div>
-          <ChevronDown size={14} className="text-slate-400" />
-        </button>
+        {/* Profile Dropdown */}
+        <div className="relative" ref={dropdownRef}>
+          <button
+            onClick={() => setIsDropdownOpen(!isDropdownOpen)}
+            className="flex items-center gap-3 p-2 pr-4 rounded-2xl bg-slate-50 hover:bg-white border border-slate-100 transition-all"
+          >
+            <div className="w-9 h-9 rounded-xl bg-slate-800 flex items-center justify-center text-white font-bold text-xs">
+              {user?.name?.charAt(0) || "A"}
+            </div>
+            <div className="hidden sm:block text-left">
+              <p className="text-[13px] font-bold text-slate-900">
+                {user?.name || "Admin"}
+              </p>
+              <span className="text-[9px] uppercase text-slate-400">
+                {user?.role || "System Admin"}
+              </span>
+            </div>
+            <ChevronDown size={14} />
+          </button>
+
+          <AnimatePresence>
+            {isDropdownOpen && (
+              <motion.div
+                initial={{ opacity: 0, y: 10, scale: 0.95 }}
+                animate={{ opacity: 1, y: 0, scale: 1 }}
+                exit={{ opacity: 0, y: 10, scale: 0.95 }}
+                transition={{ duration: 0.2 }}
+                className="absolute right-0 mt-3 w-56 bg-white rounded-2xl shadow-xl border border-slate-100 p-2 z-50"
+              >
+                <div className="px-4 py-3 border-b border-slate-100">
+                  <p className="text-xs text-slate-500 truncate">
+                    {user?.email || "admin@system.com"}
+                  </p>
+                </div>
+
+                {/* Settings */}
+                <Link
+                  href={`/${user?.role || "admin"}/settings`}
+                  className="flex items-center gap-3 px-4 py-2.5 text-sm text-slate-700 hover:bg-slate-50 rounded-xl transition"
+                >
+                  <Settings size={16} />
+                  Settings
+                </Link>
+
+                {/* Profile */}
+                <button className="w-full flex items-center gap-3 px-4 py-2.5 text-sm text-slate-700 hover:bg-slate-50 rounded-xl transition">
+                  <UserIcon size={16} />
+                  Profile
+                </button>
+
+                <div className="my-2 border-t border-slate-100" />
+
+                {/* Logout */}
+                <button
+                  onClick={handleLogout}
+                  disabled={loading}
+                  className="w-full flex items-center gap-3 px-4 py-2.5 text-sm text-rose-600 hover:bg-rose-50 rounded-xl transition"
+                >
+                  <LogOut size={16} />
+                  {loading ? "Logging out..." : "Logout"}
+                </button>
+              </motion.div>
+            )}
+          </AnimatePresence>
+        </div>
       </div>
     </header>
   );

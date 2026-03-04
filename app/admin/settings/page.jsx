@@ -2,11 +2,12 @@
 import React from 'react';
 
 import { User, Shield, Bell, Globe, Save } from 'lucide-react';
+import AdminShell from '../AdminShell';
 
 export default function SettingsPage() {
   return (
-
-      <div className="max-w-4xl mx-auto space-y-8">
+   <AdminShell>
+     <div className="max-w-4xl mx-auto space-y-8">
         <div>
           <h1 className="text-2xl font-bold text-slate-900">System Settings</h1>
           <p className="text-slate-500 text-sm">Update your profile and application configurations.</p>
@@ -60,6 +61,8 @@ export default function SettingsPage() {
           </div>
         </div>
       </div>
+   </AdminShell>
+    
 
   );
 }

@@ -5,7 +5,7 @@ import { useDocumentStore } from "@/app/store/documentStore";
 import { toast } from "react-toastify";
 
 export default function ReviewModal({ isOpen, onClose, document }) {
-  const { reviewDocument, fetchDocuments } = useDocumentStore();
+  const { reviewDocument, fetchDocumentsIdOwner } = useDocumentStore();
   const [status, setStatus] = useState("approved");
   const [reason, setReason] = useState("");
   const [loading, setLoading] = useState(false);
@@ -23,14 +23,18 @@ export default function ReviewModal({ isOpen, onClose, document }) {
   const handleSubmit = async (e) => {
     e.preventDefault();
     setLoading(true);
+  
     try {
       await reviewDocument(document.id, {
-        status: status,
+        status,
         rejection_reason: status === "rejected" ? reason : null,
       });
-      
+  
       toast.success(`Document ${status} successfully`);
-      await fetchDocuments(); // Refresh the list
+  
+      // ✅ refresh only this owner's documents
+      await fetchDocumentsIdOwner(document.owner.id);
+  
       onClose();
     } catch (err) {
       toast.error(err.response?.data?.message || "Failed to update document status");

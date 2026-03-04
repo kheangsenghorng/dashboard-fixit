@@ -6,7 +6,7 @@ import AdminShell from "../AdminShell";
 
 
 export const metadata = {
-  title: "Edit Company | Admin Panel",
+  title: "View Company | Admin Panel",
   description: "Update company metadata, branding, and account executive assignments.",
 };
 

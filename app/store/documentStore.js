@@ -23,6 +23,23 @@ export const useDocumentStore = create((set) => ({
     }
   },
 
+  fetchDocumentsIdOwner: async (ownerId) => {
+    set({ loading: true });
+    try {
+      const res = await documentService.filterByOwner(ownerId);
+      const data = res.data;
+      set({
+        documents: data.data ?? data ?? [],
+        meta: data.meta ?? null,
+        loading: false,
+      });
+    } catch (error) {
+      console.error("Fetch document by ownerId error:", error);
+      set({ loading: false });
+      throw error;
+    }
+  },
+
   sendOtp: async (id) => {
     const { data } = await documentService.sendOtp(id);
     return data;

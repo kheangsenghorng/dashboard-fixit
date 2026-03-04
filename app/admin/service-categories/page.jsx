@@ -14,6 +14,7 @@ import {
   Settings2,
   CheckCircle
 } from 'lucide-react';
+import { useAuthGuard } from '../../hooks/useAuthGuard';
 
 // Mock Data for Categories
 const initialCategories = [
@@ -26,7 +27,10 @@ const initialCategories = [
 ];
 
 export default function CategoriesPage() {
+  const { user } = useAuthGuard();
   const [searchTerm, setSearchTerm] = useState('');
+
+  if (!user) return null;
 
   return (
 

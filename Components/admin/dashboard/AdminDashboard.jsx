@@ -4,23 +4,26 @@
   import { 
     DollarSign, Users, ShoppingBag, MousePointer2, 
     Activity, ArrowUpRight, ArrowDownRight, Zap, 
-    LayoutDashboard, Calendar
+    LayoutDashboard, Calendar,
+    Building2
   } from "lucide-react";
   import { useAuthGuard } from "../../../app/hooks/useAuthGuard";
   import StatCard from "./StatCard";
   import RecentUsers from "./RecentUsers";
   import ContentLoader from "../../ContentLoader";
+import { useUsersStore } from "../../../app/store/useUsersStore";
 
 
 
   export default function AdminDashboard() {
     const { user } = useAuthGuard();
-  
+
+    const { fetchUsers, users, counts } = useUsersStore();
     const [showFullLoader, setShowFullLoader] = useState(true);
 
-
     useEffect(() => {
-      // Deliberate delay for premium feel
+      fetchUsers({ role: "all" });
+  
       const timer = setTimeout(() => setShowFullLoader(false), 1200);
       return () => clearTimeout(timer);
     }, []);
@@ -68,8 +71,8 @@
         {/* STATS GRID */}
         <div className="max-w-7xl mx-auto grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6 animate-in slide-in-from-bottom-4 duration-700">
           <StatCard title="Revenue" value="$45,231" trend="+12%" icon={DollarSign} isUp={true} color="blue" />
-          <StatCard title="Total Users" value="2,350" trend="+3%" icon={Users} isUp={true} color="emerald" />
-          <StatCard title="Transactions" value="12,432" trend="-0.4%" icon={ShoppingBag} isUp={false} color="amber" />
+          <StatCard title="Total Users"value={counts?.total} trend="+3%" icon={Users} isUp={true} color="emerald" />
+          <StatCard title="Campany"value={counts?.owners} trend="-0.4%" icon={Building2} isUp={false} color="amber" />
           <StatCard title="Uptime" value="99.9%" trend="Stable" icon={MousePointer2} isUp={true} color="indigo" />
         </div>
 
