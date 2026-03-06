@@ -32,6 +32,8 @@ import {
   Building2 as Company,
   TableProperties,
   List,
+  Type,       
+  Shapes, 
   Menu,
 } from "lucide-react";
 import { useAuthStore } from "../../../app/store/useAuthStore";
@@ -93,6 +95,11 @@ const NAV_GROUPS = [
         name: "Categories",
         href: "/admin/categories",
         icon: Layers,
+      },
+      {
+        name: "Types",
+        href: "/admin/types",
+        icon: Shapes,
       },
     ],
   },
@@ -466,6 +473,9 @@ export default function AdminSidebar({ isOpen, toggleSidebar, isCollapsed }) {
                   <NavLink href="/admin/create/categories" icon={Wrench} onClick={() => setIsCreateOpen(false)}>
                     New Categories
                   </NavLink>
+                  <NavLink href="/admin/create/types" icon={Wrench} onClick={() => setIsCreateOpen(false)}>
+                    New Types
+                  </NavLink>
 
                   <NavLink href="/admin/create/service" icon={Wrench} onClick={() => setIsCreateOpen(false)}>
                     New Service
@@ -497,6 +507,9 @@ export default function AdminSidebar({ isOpen, toggleSidebar, isCollapsed }) {
                   </NavLink>
                   <NavLink href="/admin/categories" icon={Layers} onClick={() => setIsTableOpen(false)}>
                     Category List
+                  </NavLink>
+                  <NavLink href="/admin/types" icon={Layers} onClick={() => setIsTableOpen(false)}>
+                    Type List
                   </NavLink>
                   <NavLink
                     href={({ isOwner }) =>
