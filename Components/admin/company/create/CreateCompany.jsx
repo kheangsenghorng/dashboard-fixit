@@ -27,10 +27,11 @@ import { toast } from "react-toastify";
 
 import ContentLoader from "../../../ContentLoader";
 import { useAuthGuard } from "../../../../app/hooks/useAuthGuard";
-import LocationPickerOSM from "@/components/LocationPickerOSM";
+
 
 import { useOwnerStore } from "../../../../app/store/ownerStore";
 import { useUsersStore } from "../../../../app/store/useUsersStore";
+import LocationPickerOSM from "../../../LocationPickerOSM";
 
 function buildMapUrl(lat, lng) {
   if (typeof lat !== "number" || typeof lng !== "number") return "";
