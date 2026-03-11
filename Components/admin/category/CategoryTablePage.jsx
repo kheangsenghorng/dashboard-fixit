@@ -182,7 +182,7 @@ export default function CompactServiceCategoriesPage() {
           </h1>
         </div>
         <button
-          onClick={() => router.push("/admin/create/category")}
+          onClick={() => router.push("/admin/create/categories")}
           className="bg-slate-900 hover:bg-indigo-600 text-white px-5 py-2.5 rounded-xl font-bold text-[10px] tracking-widest transition-all shadow-lg active:scale-95"
         >
           <Plus size={16} /> ADD SERVICE

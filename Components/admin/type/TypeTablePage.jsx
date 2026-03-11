@@ -66,10 +66,10 @@ export default function TypeTablePage() {
       page: overrides.page ?? 1,
       search: searchValue.trim(),
     };
-  
+
     if (activeStatus !== "all") params.status = activeStatus;
     if (activeCategory !== "all") params.category_id = activeCategory;
-  
+
     await fetchTypes(params);
   };
 
@@ -361,11 +361,18 @@ export default function TypeTablePage() {
                       </div>
                     </td>
                     <td className="px-4 py-4">
-                      <div className="flex items-center gap-2">
-                        <FolderTree size={14} className="text-slate-300" />
-                        <span className="text-xs font-bold text-slate-600">
-                          {item.category?.name || "Uncategorized"}
-                        </span>
+                      <div className="inline-flex items-center gap-2 bg-slate-50/50 border border-slate-100 p-1 pr-3 rounded-lg">
+                        <div className="bg-white p-1.5 rounded-md shadow-sm border border-slate-200">
+                          <FolderTree size={14} className="text-slate-600" />
+                        </div>
+                        <div className="flex flex-col">
+                          <span className="text-[11px] font-black uppercase tracking-tight text-slate-400 leading-none">
+                            {item.category?.status || "N/A"}
+                          </span>
+                          <span className="text-sm font-semibold text-slate-600">
+                            {item.category?.name || "Uncategorized"}
+                          </span>
+                        </div>
                       </div>
                     </td>
                     <td className="px-4 py-4 text-center">
