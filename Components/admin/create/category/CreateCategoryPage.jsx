@@ -64,6 +64,7 @@ export default function CreateServiceCategoryPage() {
   };
 
   return (
+    
     <div className="min-h-screen bg-[#F8FAFC] py-12 px-4 relative overflow-hidden">
       
       {/* Background Decorative Blobs */}

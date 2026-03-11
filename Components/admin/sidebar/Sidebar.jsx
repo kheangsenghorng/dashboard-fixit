@@ -53,6 +53,8 @@ const OWNER_BLOCKED_ROUTES = [
   "/admin/create/company",
   "/admin/create/categories",
   "/admin/categories",
+  "/admin/types",
+  "/admin/create/types",
 ];
 
 const NAV_GROUPS = [

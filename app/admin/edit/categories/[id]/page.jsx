@@ -2,6 +2,7 @@
 
 import React, { useState, useEffect, useRef } from "react";
 import { useParams, useRouter } from "next/navigation";
+import AdminShell from "../../../AdminShell";
 import {
   Layers,
   Save,
@@ -19,8 +20,10 @@ import { toast } from "react-toastify";
 
 import ContentLoader from "../../../../../Components/ContentLoader";
 import { useCategoryStore } from "../../../../store/useCategoryStore";
+import { useAuthGuard } from "../../../../hooks/useAuthGuard";
 
 const EditCategoryPage = () => {
+  const { user } = useAuthGuard();
   const { id } = useParams();
   const router = useRouter();
   const fileInputRef = useRef(null);
@@ -110,12 +113,14 @@ const EditCategoryPage = () => {
       setIsSubmitting(false);
     }
   };
+  if(!user) return null; // or a loader, or redirect to login
 
   if (loading)
     return <ContentLoader title="Loading" subtitle="Fetching category details..." Icon={Layers} />;
 
   return (
-    <div className="max-w-2xl mx-auto py-10 px-4 relative">
+     <AdminShell>
+  <div className="max-w-2xl mx-auto py-10 px-4 relative">
       
       {/* SUBMIT OVERLAY LOADER */}
       <AnimatePresence>
@@ -252,6 +257,8 @@ const EditCategoryPage = () => {
         </form>
       </motion.div>
     </div>
+     </AdminShell>
+  
   );
 };
 
