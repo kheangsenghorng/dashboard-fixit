@@ -15,7 +15,8 @@ import { useAuthGuard } from "../../../../app/hooks/useAuthGuard";
 import { useUsersStore } from "../../../../app/store/useUsersStore";
 import { useOwnerStore } from "../../../../app/store/ownerStore";
 import ContentLoader from "../../../ContentLoader";
-import LocationPickerOSM from "@/components/LocationPickerOSM";
+import LocationPickerOSM from "../../../LocationPickerOSM";
+
 
 // Helper for Google Maps link
 function buildMapUrl(lat, lng) {
