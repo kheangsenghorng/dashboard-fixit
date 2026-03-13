@@ -16,24 +16,40 @@ export function useAuthHandler() {
   const [login, setLogin] = useState("");
   const [password, setPassword] = useState("");
 
-  const handleLogin = async () => {
+  const handleLogin = async (customRedirect) => {
     try {
-      const user = await loginAction(login, password);
-
-      // Redirect to requested page
-      if (redirect) {
-        router.replace(redirect);
+      if (!login || !password) {
+        alert("Please enter login and password");
         return;
       }
 
-      // Default role redirect
-      if (user.role === "admin") {
-        router.replace("/admin/dashboard");
-      } else if (user.role === "owner") {
-        router.replace("/owner/dashboard");
+      const user = await loginAction(login, password);
+
+      const targetRedirect = customRedirect || redirect;
+
+      // Redirect to requested page
+      if (targetRedirect) {
+        router.replace(targetRedirect);
+        return;
       }
+
+      // Role redirect
+      switch (user.role) {
+        case "admin":
+          router.replace("/admin/dashboard");
+          break;
+
+        case "owner":
+          router.replace("/owner/dashboard");
+          break;
+
+        default:
+          router.replace("/");
+      }
+
     } catch (e) {
-      alert("Login failed");
+      console.error(e);
+      alert("Login failed. Please check your credentials.");
     }
   };
 

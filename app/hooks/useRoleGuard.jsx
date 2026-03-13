@@ -17,7 +17,7 @@ export function useRoleGuard(allowedRoles) {
       } else if (user.role === "owner") {
         router.replace("/owner/dashboard");
       } else {
-        router.replace("/login");
+        router.replace("/auth/login");
       }
     }
   }, [user, allowedRoles, router]);

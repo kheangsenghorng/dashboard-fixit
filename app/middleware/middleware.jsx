@@ -6,13 +6,13 @@ export function middleware(request) {
   const token = request.cookies.get("token")?.value;
   const role = request.cookies.get("role")?.value;
 
-  const isLoginPage = pathname === "/login";
+  const isLoginPage = pathname === "/auth/login";
   const isAdmin = pathname.startsWith("/admin");
   const isOwner = pathname.startsWith("/owner");
 
   // 1. Not logged in → block protected pages
   if (!token && (isAdmin || isOwner)) {
-    const loginUrl = new URL("/login", request.url);
+    const loginUrl = new URL("/auth/login", request.url);
     loginUrl.searchParams.set("redirect", pathname);
     return NextResponse.redirect(loginUrl);
   }
@@ -50,5 +50,5 @@ export function middleware(request) {
 }
 
 export const config = {
-  matcher: ["/login", "/admin/:path*", "/owner/:path*"],
+  matcher: ["/auth/login", "/admin/:path*", "/owner/:path*"],
 };
