@@ -28,18 +28,6 @@ export const useAuthStore = create((set) => ({
         password,
       });
 
-      /**
-       * Expected API response:
-       * {
-       *   access_token: "xxxx",
-       *   user: {
-       *     id: 1,
-       *     name: "Admin",
-       *     role: "admin"
-       *   }
-       * }
-       */
-
       const token = data.access_token;
       const user = data.user;
 

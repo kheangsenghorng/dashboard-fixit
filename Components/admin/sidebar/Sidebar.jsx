@@ -287,7 +287,7 @@ export default function AdminSidebar({ isOpen, toggleSidebar, isCollapsed }) {
 
   const handleLogout = async () => {
     await logout();
-    router.push("/login");
+    router.push("/");
   };
 
   // ── Reusable nav link ──
