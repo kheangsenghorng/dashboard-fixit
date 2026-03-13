@@ -7,6 +7,7 @@ import { useAuthHandler } from "../../hooks/useAuthHandler";
 import { Mail, Lock, Loader2, LogIn } from "lucide-react";
 import LoadingCard from "../../../components/LoadingCard";
 
+
 export default function LoginClient() {
   useGuestGuard();
 
