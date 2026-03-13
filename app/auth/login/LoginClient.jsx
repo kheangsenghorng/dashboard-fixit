@@ -1,32 +1,30 @@
-'use client';
+"use client";
 
-import { useState } from "react";
+import { useState, useMemo } from "react";
 import { useSearchParams } from "next/navigation";
-import { useAuthHandler } from "../hooks/useAuthHandler";
-import { useGuestGuard } from "../hooks/useGuestGuard";
+import useGuestGuard from "../../hooks/useGuestGuard";
+import { useAuthHandler } from "../../hooks/useAuthHandler";
 import { Mail, Lock, Loader2, LogIn } from "lucide-react";
-import LoadingCard from "../../Components/LoadingCard";
+import LoadingCard from "../../../components/LoadingCard";
 
 export default function LoginClient() {
-  const searchParams = useSearchParams();
-  const redirect = searchParams.get("redirect");
-  useGuestGuard("/admin/dashboard");
+  useGuestGuard();
 
-  const {
-    login,
-    setLogin,
-    password,
-    setPassword,
-    loading,
-    handleLogin,
-  } = useAuthHandler();
+  const searchParams = useSearchParams();
+
+  const redirect = useMemo(() => {
+    return searchParams?.get("redirect") || null;
+  }, [searchParams]);
+
+  const { login, setLogin, password, setPassword, loading, handleLogin } =
+    useAuthHandler();
 
   const [isPageLoading] = useState(false);
 
   const onSubmit = async (e) => {
     e.preventDefault();
     if (loading) return;
-    await handleLogin();
+    await handleLogin(redirect);
   };
 
   if (isPageLoading) {
@@ -40,7 +38,6 @@ export default function LoginClient() {
   return (
     <div className="min-h-screen flex items-center justify-center bg-gradient-to-br from-blue-50 to-indigo-100 p-4">
       <div className="w-full max-w-md bg-white rounded-2xl shadow-xl p-8 space-y-6">
-
         {/* Header */}
         <div className="text-center space-y-2">
           <div className="inline-flex items-center justify-center w-16 h-16 bg-indigo-600 rounded-full mb-2">
@@ -48,30 +45,34 @@ export default function LoginClient() {
           </div>
 
           <h1 className="text-3xl font-bold text-gray-900">Welcome Back</h1>
+
           <p className="text-gray-500">Please enter your details to sign in</p>
         </div>
 
-        <form onSubmit={onSubmit} className="space-y-4">
-
-          {/* Login Field */}
+        <form
+          suppressHydrationWarning
+          onSubmit={onSubmit}
+          className="space-y-4"
+        >
+          {/* Login */}
           <div className="space-y-2">
             <label className="text-sm font-medium text-gray-700 block">
               Email or Phone
             </label>
 
             <div className="relative">
-              <div className="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none">
-                <Mail className="h-5 w-5 text-gray-400" />
-              </div>
+              <Mail className="absolute left-3 top-3.5 h-5 w-5 text-gray-400" />
 
               <input
                 type="text"
+                name="login"
                 placeholder="Email or phone"
                 value={login}
                 onChange={(e) => setLogin(e.target.value)}
-                autoComplete="username"
+                autoComplete="off"
+                suppressHydrationWarning
                 required
-                className="block w-full pl-10 pr-3 py-3 border border-gray-300 rounded-xl bg-gray-50 focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500 transition-all outline-none text-gray-900"
+                className="w-full pl-10 pr-3 py-3 border border-gray-300 rounded-xl bg-gray-50"
               />
             </div>
           </div>
@@ -83,22 +84,23 @@ export default function LoginClient() {
             </label>
 
             <div className="relative">
-              <div className="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none">
-                <Lock className="h-5 w-5 text-gray-400" />
-              </div>
+              <Lock className="absolute left-3 top-3.5 h-5 w-5 text-gray-400" />
 
               <input
                 type="password"
+                name="password"
                 placeholder="••••••••"
                 value={password}
                 onChange={(e) => setPassword(e.target.value)}
-                autoComplete="current-password"
+                autoComplete="off"
+                suppressHydrationWarning
                 required
-                className="block w-full pl-10 pr-3 py-3 border border-gray-300 rounded-xl bg-gray-50 focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500 transition-all outline-none text-gray-900"
+                className="w-full pl-10 pr-3 py-3 border border-gray-300 rounded-xl bg-gray-50"
               />
             </div>
           </div>
 
+          {/* Button */}
           <button
             type="submit"
             disabled={loading}
@@ -113,7 +115,6 @@ export default function LoginClient() {
               "Sign In"
             )}
           </button>
-
         </form>
       </div>
     </div>
