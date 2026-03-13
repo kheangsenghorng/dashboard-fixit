@@ -1,12 +1,10 @@
 "use client";
 
-import { useState, useMemo } from "react";
+import { useMemo } from "react";
 import { useSearchParams } from "next/navigation";
 import useGuestGuard from "../../hooks/useGuestGuard";
 import { useAuthHandler } from "../../hooks/useAuthHandler";
 import { Mail, Lock, Loader2, LogIn } from "lucide-react";
-import LoadingCard from "../../../components/LoadingCard";
-
 
 export default function LoginClient() {
   useGuestGuard();
@@ -20,21 +18,11 @@ export default function LoginClient() {
   const { login, setLogin, password, setPassword, loading, handleLogin } =
     useAuthHandler();
 
-  const [isPageLoading] = useState(false);
-
   const onSubmit = async (e) => {
     e.preventDefault();
     if (loading) return;
     await handleLogin(redirect);
   };
-
-  if (isPageLoading) {
-    return (
-      <main className="min-h-screen flex items-center justify-center bg-scaffold p-6">
-        <LoadingCard />
-      </main>
-    );
-  }
 
   return (
     <div className="min-h-screen flex items-center justify-center bg-gradient-to-br from-blue-50 to-indigo-100 p-4">
@@ -44,9 +32,7 @@ export default function LoginClient() {
           <div className="inline-flex items-center justify-center w-16 h-16 bg-indigo-600 rounded-full mb-2">
             <LogIn className="text-white w-8 h-8" />
           </div>
-
           <h1 className="text-3xl font-bold text-gray-900">Welcome Back</h1>
-
           <p className="text-gray-500">Please enter your details to sign in</p>
         </div>
 
@@ -60,10 +46,8 @@ export default function LoginClient() {
             <label className="text-sm font-medium text-gray-700 block">
               Email or Phone
             </label>
-
             <div className="relative">
               <Mail className="absolute left-3 top-3.5 h-5 w-5 text-gray-400" />
-
               <input
                 type="text"
                 name="login"
@@ -83,10 +67,8 @@ export default function LoginClient() {
             <label className="text-sm font-medium text-gray-700 block">
               Password
             </label>
-
             <div className="relative">
               <Lock className="absolute left-3 top-3.5 h-5 w-5 text-gray-400" />
-
               <input
                 type="password"
                 name="password"
