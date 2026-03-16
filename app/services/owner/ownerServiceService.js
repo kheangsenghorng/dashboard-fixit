@@ -1,4 +1,5 @@
 import api from "@/lib/api";
+import { de } from "zod/v4/locales";
 
 export const ownerServiceService = {
 
@@ -22,5 +23,9 @@ export const ownerServiceService = {
 
   updateManyStatus: (ids, status) =>
     api.patch("/owner/services/status/bulk", { ids, status }),
-
+  
+  deleteImage: (serviceId, image) =>
+    api.delete(`/owner/services/${serviceId}/image`, {
+      data: { image },
+    }),
 };

@@ -374,10 +374,10 @@ export default function CompactServicesPage() {
                     <td className="px-4 py-3">
                       <div className="flex items-center gap-3">
                         <div className="relative w-11 h-11 rounded-xl overflow-hidden bg-slate-50 border border-slate-100 shadow-xs">
-                          {item.images?.[0] ? (
+                          {item.images?.[0]?.url ? (
                             <Image
                               src={item.images[0].url}
-                              alt={item.title}
+                              alt={item.title || "service image"}
                               fill
                               className="object-cover"
                               unoptimized
@@ -395,13 +395,15 @@ export default function CompactServicesPage() {
                           </p>
                           <div className="flex items-center gap-1.5 text-[9px] text-slate-400 font-bold uppercase tracking-tighter">
                             <div className="w-3.5 h-3.5 rounded-full overflow-hidden border border-slate-100 bg-slate-50 relative">
-                              <Image
-                                src={item.owner?.logo}
-                                alt="logo"
-                                fill
-                                className="object-cover"
-                                unoptimized
-                              />
+                              {item.owner?.logo ? (
+                                <Image
+                                  src={item.owner.logo}
+                                  alt="logo"
+                                  fill
+                                  className="object-cover"
+                                  unoptimized
+                                />
+                              ) : null}
                             </div>
                             <span className="truncate max-w-[100px]">
                               {item.owner?.business_name}
