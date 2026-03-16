@@ -15,9 +15,6 @@ export const useUsersStore = create((set, get) => ({
   searchTerm: "",
   lastParams: {}, // ✅ remember last query params so refetch is easy
 
-
-  
-
   setSearchTerm: (term) => set({ searchTerm: term }),
 
   withLoading: async (fn) => {
@@ -122,11 +119,17 @@ export const useUsersStore = create((set, get) => ({
 
       const { data } = await api.put(`/users/${id}`, cleanPayload);
 
-      // refetch to keep counts correct if role/status changed
-      const { meta, lastParams } = get();
-      await get().fetchUsers({ ...lastParams, page: meta?.current_page || 1 });
+      const updatedUser = data.user || data.data;
 
-      return data.user;
+      // update current user instantly
+      set({ user: updatedUser });
+
+      // update user inside list
+      set({
+        users: get().users.map((u) => (u.id === id ? updatedUser : u)),
+      });
+
+      return updatedUser;
     }),
 
   // ------------------
@@ -151,10 +154,15 @@ export const useUsersStore = create((set, get) => ({
         headers: { "Content-Type": "multipart/form-data" },
       });
 
-      // optional: refresh list
-      const { meta, lastParams } = get();
-      await get().fetchUsers({ ...lastParams, page: meta?.current_page || 1 });
+      const updatedUser = data.user || data.data;
 
-      return data.user;
+      // update avatar instantly
+      set({ user: updatedUser });
+
+      set({
+        users: get().users.map((u) => (u.id === id ? updatedUser : u)),
+      });
+
+      return updatedUser;
     }),
 }));

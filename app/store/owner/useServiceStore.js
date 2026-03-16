@@ -1,6 +1,6 @@
 import { create } from "zustand";
 import { ownerServiceService } from "../../services/owner/ownerServiceService";
-import { fa } from "zod/v4/locales";
+
 
 export const useServiceStoreCompany = create((set, get) => ({
   services: [],
@@ -117,4 +117,22 @@ export const useServiceStoreCompany = create((set, get) => ({
       console.error("Bulk status update error:", error);
     }
   },
+
+ /*
+  |--------------------------------------------------------------------------
+  | Delete Service Image
+  |--------------------------------------------------------------------------
+  */
+    deleteServiceImage: async (serviceId, image) => {
+      try {
+    
+        const res = await ownerServiceService.deleteImage(serviceId, image);
+    
+        return res.data;
+    
+      } catch (error) {
+        console.error("Delete image error:", error);
+        throw error.response?.data || { message: "Delete image failed" };
+      }
+    },
 }));

@@ -67,12 +67,6 @@ const NAV_GROUPS = [
           isOwner ? "/owner/dashboard" : "/admin/dashboard",
         icon: LayoutDashboard,
       },
-      {
-        name: "Documents",
-        href: "/owner/documents",
-        icon: FileText,
-        roles: ["owner"],
-      },
       { name: "Analytics", href: "/admin/analytics", icon: BarChart4 },
     ],
   },
@@ -206,6 +200,7 @@ export default function AdminSidebar({ isOpen, toggleSidebar, isCollapsed }) {
     [isOwner, isAdmin]
   );
 
+  // Determines if a route should be blocked for the owner role
   const isBlocked = useCallback(
     (hrefOrFn) => {
       if (!isOwner) return false;
@@ -217,33 +212,25 @@ export default function AdminSidebar({ isOpen, toggleSidebar, isCollapsed }) {
     [isOwner, resolveHref]
   );
 
+
+  // Checks if the current route matches the item's href (including sub-routes)
   const isItemActive = useCallback(
     (item) => {
       const finalHref = resolveHref(item.href);
       if (!finalHref) return false;
-
-      const current = (pathname || "").split("?")[0];
-      const target = finalHref.split("?")[0];
-
-      if (item.name === "Company") {
-        return (
-          current.startsWith("/admin/company") ||
-          current.startsWith("/admin/edit/company") ||
-          current.startsWith("/admin/create/company")
-        );
-      }
-
-      if (current === target || current.startsWith(target + "/")) return true;
-
-      const targetSlug = target.replace("/admin/", "");
+  
+      const current = pathname.split("?")[0];
+      const base = finalHref.split("?")[0];
+  
       return (
-        current.startsWith(`/admin/edit/${targetSlug}`) ||
-        current.startsWith(`/admin/create/${targetSlug}`)
+        current === base ||
+        current.startsWith(base + "/") ||
+        current.includes(`/create/${base.split("/").pop()}`) ||
+        current.includes(`/edit/${base.split("/").pop()}`)
       );
     },
     [pathname, resolveHref]
   );
-
   // Route protection
   useEffect(() => {
     if (!mounted || !user) return;
