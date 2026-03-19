@@ -22,6 +22,8 @@ export default function Navbar({ toggleSidebar }) {
   const router = useRouter();
 
   const { user } = useAuthGuard();
+  
+  
   const { logout, loading } = useAuthStore();
 
   // Close dropdown when clicking outside
@@ -79,7 +81,7 @@ export default function Navbar({ toggleSidebar }) {
             <div className="w-9 h-9 rounded-xl bg-slate-800 flex items-center justify-center text-white font-bold text-xs overflow-hidden shadow-sm">
               {user?.avatar ? (
                 <img
-                  src={user.avatar}
+                  src={user?.avatar}
                   alt="Avatar"
                   className="w-full h-full object-cover"
                 />

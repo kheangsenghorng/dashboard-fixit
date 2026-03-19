@@ -6,59 +6,38 @@ import { useAuthStore } from "../store/useAuthStore";
 
 export function useAuthHandler() {
   const router = useRouter();
-  const params = useSearchParams();
-
-  const redirect = params.get("redirect");
+  const searchParams = useSearchParams();
+  const redirect = searchParams.get("redirect");
 
   const loginAction = useAuthStore((s) => s.login);
+  const setOtpContext = useAuthStore((s) => s.setOtpContext);
+  const setError = useAuthStore((s) => s.setError); // surface errors in UI, not alert()
   const loading = useAuthStore((s) => s.loading);
 
   const [login, setLogin] = useState("");
   const [password, setPassword] = useState("");
 
   const handleLogin = async (customRedirect) => {
+    if (!login || !password) {
+      setError("Please enter your login and password.");
+      return;
+    }
+
     try {
-      if (!login || !password) {
-        alert("Please enter login and password");
-        return;
-      }
+      const data = await loginAction(login, password);
 
-      const user = await loginAction(login, password);
+      setOtpContext({
+        login: data.login ?? login,
+        channel: data.channel ?? "phone",
+        redirect: customRedirect ?? redirect ?? null,
+      });
 
-      const targetRedirect = customRedirect || redirect;
-
-      // Redirect to requested page
-      if (targetRedirect) {
-        router.replace(targetRedirect);
-        return;
-      }
-
-      // Role redirect
-      switch (user.role) {
-        case "admin":
-          router.replace("/admin/dashboard");
-          break;
-
-        case "owner":
-          router.replace("/owner/dashboard");
-          break;
-
-        default:
-          router.replace("/");
-      }
-
-    } catch (e) {
-      console.error(e);
-      alert("Login failed. Please check your credentials.");
+      router.replace("/auth/verify-otp");
+      return data;
+    } catch {
+      // error is already written to the store by loginAction — nothing extra needed
     }
   };
 
-  return {
-    login,
-    setLogin,
-    password,
-    setPassword,
-    loading,
-    handleLogin,
-  };
+  return { login, setLogin, password, setPassword, loading, handleLogin };
 }

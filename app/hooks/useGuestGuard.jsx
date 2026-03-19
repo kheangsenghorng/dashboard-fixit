@@ -1,18 +1,28 @@
 "use client";
 
 import { useEffect } from "react";
-import { useRouter, usePathname } from "next/navigation";
-import { isTokenValid } from "../../lib/token";
+import { useRouter } from "next/navigation";
+import { useAuthStore } from "../store/useAuthStore";
 
 export default function useGuestGuard() {
   const router = useRouter();
-  const pathname = usePathname();
+  const user = useAuthStore((s) => s.user);
+  const initialized = useAuthStore((s) => s.initialized);
 
   useEffect(() => {
-    if (pathname !== "/auth/login") return;
+    if (!initialized) return;
 
-    if (isTokenValid()) {
-      router.replace("/admin/dashboard");
+    if (user) {
+      switch (user.role) {
+        case "admin":
+          router.replace("/admin/dashboard");
+          break;
+        case "owner":
+          router.replace("/owner/dashboard");
+          break;
+        default:
+          router.replace("/");
+      }
     }
-  }, [pathname, router]);
+  }, [user, initialized, router]);
 }

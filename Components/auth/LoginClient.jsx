@@ -1,15 +1,19 @@
 "use client";
 
-import { useMemo } from "react";
+import { useMemo, useState } from "react"; // Added useState
 import { useSearchParams } from "next/navigation";
-import useGuestGuard from "../../hooks/useGuestGuard";
-import { useAuthHandler } from "../../hooks/useAuthHandler";
-import { Mail, Lock, Loader2, LogIn } from "lucide-react";
+import Link from "next/link"; // Added Link
+import useGuestGuard from "../../app/hooks/useGuestGuard";
+
+import { Mail, Lock, Loader2, LogIn, Eye, EyeOff } from "lucide-react"; // Added Eye icons
+import { useAuthHandler } from "../../app/hooks/useAuthHandler";
 
 export default function LoginClient() {
   useGuestGuard();
-
   const searchParams = useSearchParams();
+  
+  // State for toggling password visibility
+  const [showPassword, setShowPassword] = useState(false);
 
   const redirect = useMemo(() => {
     return searchParams?.get("redirect") || null;
@@ -36,12 +40,8 @@ export default function LoginClient() {
           <p className="text-gray-500">Please enter your details to sign in</p>
         </div>
 
-        <form
-          suppressHydrationWarning
-          onSubmit={onSubmit}
-          className="space-y-4"
-        >
-          {/* Login */}
+        <form onSubmit={onSubmit} className="space-y-4">
+          {/* Login Field */}
           <div className="space-y-2">
             <label className="text-sm font-medium text-gray-700 block">
               Email or Phone
@@ -50,19 +50,16 @@ export default function LoginClient() {
               <Mail className="absolute left-3 top-3.5 h-5 w-5 text-gray-400" />
               <input
                 type="text"
-                name="login"
                 placeholder="Email or phone"
                 value={login}
                 onChange={(e) => setLogin(e.target.value)}
-                autoComplete="off"
-                suppressHydrationWarning
                 required
-                className="w-full pl-10 pr-3 py-3 border border-gray-300 rounded-xl bg-gray-50"
+                className="w-full pl-10 pr-3 py-3 border border-gray-300 rounded-xl bg-gray-50 focus:ring-2 focus:ring-indigo-500 outline-none transition"
               />
             </div>
           </div>
 
-          {/* Password */}
+          {/* Password Field with Eye Toggle */}
           <div className="space-y-2">
             <label className="text-sm font-medium text-gray-700 block">
               Password
@@ -70,16 +67,21 @@ export default function LoginClient() {
             <div className="relative">
               <Lock className="absolute left-3 top-3.5 h-5 w-5 text-gray-400" />
               <input
-                type="password"
-                name="password"
+                type={showPassword ? "text" : "password"} // Dynamic type
                 placeholder="••••••••"
                 value={password}
                 onChange={(e) => setPassword(e.target.value)}
-                autoComplete="off"
-                suppressHydrationWarning
                 required
-                className="w-full pl-10 pr-3 py-3 border border-gray-300 rounded-xl bg-gray-50"
+                className="w-full pl-10 pr-12 py-3 border border-gray-300 rounded-xl bg-gray-50 focus:ring-2 focus:ring-indigo-500 outline-none transition"
               />
+              {/* Eye Icon Button */}
+              <button
+                type="button"
+                onClick={() => setShowPassword(!showPassword)}
+                className="absolute right-3 top-3.5 text-gray-400 hover:text-indigo-600 transition"
+              >
+                {showPassword ? <EyeOff size={20} /> : <Eye size={20} />}
+              </button>
             </div>
           </div>
 
@@ -87,7 +89,7 @@ export default function LoginClient() {
           <button
             type="submit"
             disabled={loading}
-            className="w-full flex items-center justify-center py-3 px-4 rounded-xl text-white bg-indigo-600 hover:bg-indigo-700 font-semibold disabled:opacity-70 transition"
+            className="w-full flex items-center justify-center py-3 px-4 rounded-xl text-white bg-indigo-600 hover:bg-indigo-700 font-semibold disabled:opacity-70 transition shadow-lg shadow-indigo-200"
           >
             {loading ? (
               <>
@@ -99,6 +101,17 @@ export default function LoginClient() {
             )}
           </button>
         </form>
+
+        {/* Register Route Link */}
+        <p className="text-center text-sm text-gray-600">
+          Don't have an account?{" "}
+          <Link
+            href="/auth/register"
+            className="text-indigo-600 font-bold hover:underline"
+          >
+            Create Account
+          </Link>
+        </p>
       </div>
     </div>
   );
