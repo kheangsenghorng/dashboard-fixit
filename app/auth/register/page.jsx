@@ -1,15 +1,16 @@
 import { Suspense } from "react";
-import LoginClient from "../../../Components/auth/LoginClient";
+
+import RegisterPage from "../../../Components/auth/Register";
 
 export const metadata = {
-  title: "Login",
-  description: "Login to admin panel",
+  title: "Register",
+  description: "RegisterPage",
 };
 
 export default function LoginPage() {
   return (
     <Suspense fallback={<div>Loading...</div>}>
-      <LoginClient />
+      <RegisterPage />
     </Suspense>
   );
 }
