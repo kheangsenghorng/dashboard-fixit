@@ -22,7 +22,7 @@ export function useAuthGuard() {
     if (!initialized) return;
 
     if (user === null) {
-      router.replace("/auth/login");
+      router.replace("/");
     }
   }, [user, initialized, router]);
 
