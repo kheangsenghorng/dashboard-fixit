@@ -1,47 +1,341 @@
 "use client";
 
-import { Menu } from "lucide-react";
-// import UserActions from "./UserActions";
+import React, { useState, useRef, useEffect } from "react";
+import {
+  Search,
+  Heart,
+  ShoppingBag,
+  ChevronDown,
+  Menu,
+  LayoutGrid,
+  ArrowRight,
+  Zap,
+} from "lucide-react";
+import Link from "next/link";
 
-export default function Navbar() {
+// Hooks and Stores
+import { useTypeStore } from "../../app/store/useTypeStore";
+import { useCategoryStore } from "../../app/store/useCategoryStore";
+import { useAuthGuard } from "../../app/hooks/useAuthGuard";
+import { encodeId } from "../../app/utils/hashids";
+
+export default function NavbarFixit() {
+  const { user: authUser } = useAuthGuard();
+  const { categories, isLoading: catLoading } = useCategoryStore();
+  const { activeTypes, isLoading: typeLoading } = useTypeStore();
+
+  const [openCategory, setOpenCategory] = useState(false);
+  const [openType, setOpenType] = useState(false);
+
+  const categoryDropdownRef = useRef(null);
+  const typeDropdownRef = useRef(null);
+
+  // Dashboard route logic based on user role
+  const getDashboardRoute = () => {
+    if (!authUser) return "/auth/login";
+    switch (authUser.role) {
+      case "admin":
+        return "/admin/dashboard";
+      case "owner":
+        return "/owner/dashboard";
+      case "customer":
+        return "/customer";
+      default:
+        return "/";
+    }
+  };
+
+  // Close dropdowns on click outside
+  useEffect(() => {
+    const handleClickOutside = (event) => {
+      if (
+        categoryDropdownRef.current &&
+        !categoryDropdownRef.current.contains(event.target)
+      )
+        setOpenCategory(false);
+      if (
+        typeDropdownRef.current &&
+        !typeDropdownRef.current.contains(event.target)
+      )
+        setOpenType(false);
+    };
+    document.addEventListener("mousedown", handleClickOutside);
+    return () => document.removeEventListener("mousedown", handleClickOutside);
+  }, []);
+
   return (
-    <>
-      <div className="fixed top-0 left-0 right-0 z-[100] py-0">
-        <header className="mx-auto max-w-full bg-white border-b border-slate-100 px-0">
-          <div className="max-w-7xl mx-auto flex items-center justify-between h-16 px-5">
-            {/* BRAND */}
-            <div className="flex items-center gap-4 lg:gap-10">
-              <a href="/" className="group flex items-center gap-2 sm:gap-3">
-                <div className="flex flex-col">
-                  <span className="text-sm sm:text-base font-black text-slate-900 tracking-tighter leading-none uppercase">
-                    Saby-Tinh
-                  </span>
-                </div>
-              </a>
+    <div className="fixed top-0 left-0 right-0 z-[100]">
+      <header className="w-full bg-white border-b border-slate-100 shadow-sm">
+        <div className="max-w-[1440px] mx-auto flex items-center justify-between h-20 px-6">
+          {/* LEFT: BRAND & NAV LINKS */}
+          <div className="flex items-center gap-10">
+            <Link href="/" className="group flex flex-col">
+              <span className="text-xl font-black text-slate-900 tracking-tighter uppercase group-hover:text-blue-600 transition-colors">
+                Saby-Tinh
+              </span>
+            </Link>
 
-              {/* <NavLinks
-                categories={categories}
-                brands={brands}
-                stores={stores}
-                isScrolled={false}
-              /> */}
-            </div>
-
-            {/* <SearchBar isScrolled={false} /> */}
-
-            <div className="flex items-center gap-2 sm:gap-3">
-              {/* <UserActions userProfile={userProfile} isScrolled={false} /> */}
-
-              <button
-                className="lg:hidden p-2 text-slate-600 hover:bg-slate-100 rounded-full transition-colors active:scale-95"
-                aria-label="Open Menu"
+            <nav className="hidden lg:flex items-center gap-8">
+              <Link
+                href="/"
+                className="text-[13px] font-bold text-slate-500 hover:text-blue-600 transition"
               >
-                <Menu className="w-6 h-6" />
-              </button>
+                Home
+              </Link>
+
+              <div className="flex items-center gap-1 text-[13px] font-bold text-slate-500 cursor-pointer hover:text-blue-600 transition">
+                Shop <ChevronDown size={14} />
+              </div>
+
+              {/* MEGA MENU: CATEGORIES */}
+              <div className="relative" ref={categoryDropdownRef}>
+                <button
+                  onClick={() => {
+                    setOpenCategory(!openCategory);
+                    setOpenType(false);
+                  }}
+                  className={`flex items-center gap-1 text-[13px] font-bold transition py-2 border-b-2 ${
+                    openCategory
+                      ? "text-blue-600 border-blue-600"
+                      : "text-slate-500 border-transparent hover:text-blue-600"
+                  }`}
+                >
+                  Categories{" "}
+                  <ChevronDown
+                    size={14}
+                    className={`transition-transform duration-300 ${
+                      openCategory ? "rotate-180" : ""
+                    }`}
+                  />
+                </button>
+
+                {openCategory && (
+                  <div className="absolute left-[-150px] top-full pt-4 w-[850px]">
+                    <div className="bg-white shadow-[0_25px_50px_-12px_rgba(0,0,0,0.15)] rounded-[2.5rem] border border-slate-100 flex overflow-hidden animate-in fade-in slide-in-from-top-3 duration-300">
+                      {/* Left Info Panel */}
+                      <div className="w-[35%] bg-[#F8FAFC] p-10 border-r border-slate-100 flex flex-col">
+                        <div className="bg-white shadow-sm w-14 h-14 rounded-2xl flex items-center justify-center text-blue-600 mb-8 border border-blue-50">
+                          <LayoutGrid size={28} />
+                        </div>
+                        <h3 className="text-2xl font-black text-slate-900 mb-4 leading-tight">
+                          Shop by <br /> Category
+                        </h3>
+                        <p className="text-sm text-slate-400 font-medium mb-10 leading-relaxed">
+                          Explore our vast registry of products categorized for
+                          your needs.
+                        </p>
+                        <Link
+                          href="/categories"
+                          className="mt-auto text-blue-600 text-[11px] font-black uppercase tracking-[0.2em] flex items-center gap-2 hover:gap-4 transition-all"
+                        >
+                          All Categories <ArrowRight size={16} />
+                        </Link>
+                      </div>
+
+                      {/* Right Grid */}
+                      <div className="w-[65%] p-10 grid grid-cols-2 gap-x-10 gap-y-8">
+                        {catLoading ? (
+                          <div className="col-span-2 flex items-center justify-center py-20 text-slate-400 text-sm italic">
+                            Loading categories...
+                          </div>
+                        ) : (
+                          categories?.slice(0, 8).map((cat) => (
+                            <Link
+                              key={cat.id}
+                              href={`/category/${encodeId(cat.id)}`}
+                              onClick={() => setOpenCategory(false)}
+                              className="flex items-center gap-5 group"
+                            >
+                              <div className="w-14 h-14 shrink-0 bg-slate-100 rounded-2xl flex items-center justify-center group-hover:bg-blue-600 transition-all duration-300 group-hover:shadow-lg group-hover:shadow-blue-200">
+                                <img
+                                  src={cat.icon}
+                                  className="w-7 h-7 object-contain group-hover:brightness-0 group-hover:invert transition-all"
+                                  alt={cat.name}
+                                />
+                              </div>
+                              <div className="flex flex-col">
+                                <span className="text-[15px] font-bold text-slate-800 group-hover:text-blue-600 transition-colors">
+                                  {cat.name}
+                                </span>
+                                <span className="text-[10px] font-bold text-slate-400 uppercase tracking-tighter">
+                                  View Collection
+                                </span>
+                              </div>
+                            </Link>
+                          ))
+                        )}
+                      </div>
+                    </div>
+                  </div>
+                )}
+              </div>
+
+              {/* MEGA MENU: TYPES / COLLECTIONS */}
+              <div className="relative" ref={typeDropdownRef}>
+                <button
+                  type="button"
+                  onClick={() => {
+                    setOpenType(!openType);
+                    setOpenCategory(false);
+                  }}
+                  className={`flex items-center gap-1 text-[13px] font-bold transition py-2 border-b-2 ${
+                    openType
+                      ? "text-blue-600 border-blue-600"
+                      : "text-slate-500 border-transparent hover:text-blue-600"
+                  }`}
+                >
+                  Types{" "}
+                  <ChevronDown
+                    size={14}
+                    className={`transition-transform duration-300 ${
+                      openType ? "rotate-180" : ""
+                    }`}
+                  />
+                </button>
+
+                {openType && (
+                  <div className="absolute left-[-300px] top-full pt-4 z-50">
+                    <div className="bg-white shadow-[0_25px_50px_-12px_rgba(0,0,0,0.15)] rounded-[2.5rem] border border-slate-100 flex overflow-hidden animate-in fade-in slide-in-from-top-3 duration-300 w-[850px]">
+                      {/* LEFT PANEL: Info Section */}
+                      <div className="w-[35%] bg-[#FDFCFB] p-10 border-r border-slate-100 flex flex-col">
+                        <div className="bg-white shadow-sm w-14 h-14 rounded-2xl flex items-center justify-center text-orange-500 mb-8 border border-orange-50">
+                          <Zap
+                            size={28}
+                            fill="currentColor"
+                            className="opacity-20"
+                          />
+                          <Zap size={28} className="absolute" />
+                        </div>
+
+                        <h3 className="text-2xl font-black text-slate-900 mb-4 leading-tight">
+                          Explore <br /> Collections
+                        </h3>
+
+                        <p className="text-sm text-slate-400 font-medium mb-10 leading-relaxed">
+                          Discover products grouped by specific types and unique
+                          collections.
+                        </p>
+
+                        <Link
+                          href="/types"
+                          onClick={() => setOpenType(false)}
+                          className="mt-auto text-blue-600 text-[11px] font-black uppercase tracking-[0.2em] flex items-center gap-2 hover:gap-4 transition-all"
+                        >
+                          View All Types <ArrowRight size={16} />
+                        </Link>
+                      </div>
+
+                      {/* RIGHT PANEL: Grid Section */}
+                      <div className="w-[65%] p-10">
+                        <div className="grid grid-cols-2 gap-x-10 gap-y-8">
+                          {typeLoading ? (
+                            <div className="col-span-2 py-20 text-center text-slate-400 text-sm italic">
+                              Loading types...
+                            </div>
+                          ) : activeTypes?.length > 0 ? (
+                            activeTypes.slice(0, 8).map((type) => (
+                              <Link
+                                key={type.id}
+                                href={`/types/${encodeId(type.id)}`}
+                                onClick={() => setOpenType(false)}
+                                className="flex items-center gap-5 group cursor-pointer"
+                              >
+                                {/* Icon Container */}
+                                <div className="w-14 h-14 shrink-0 bg-slate-100 rounded-2xl flex items-center justify-center group-hover:bg-blue-600 transition-all duration-300 group-hover:shadow-lg group-hover:shadow-blue-200">
+                                  {type.icon ? (
+                                    <img
+                                      src={type.icon}
+                                      alt=""
+                                      className="w-7 h-7 object-contain group-hover:brightness-0 group-hover:invert transition-all"
+                                    />
+                                  ) : (
+                                    <Zap
+                                      size={22}
+                                      className="text-slate-400 group-hover:text-white transition-colors"
+                                    />
+                                  )}
+                                </div>
+
+                                {/* Text Container */}
+                                <div className="flex flex-col">
+                                  <span className="text-[15px] font-bold text-slate-800 group-hover:text-blue-600 transition-colors leading-tight">
+                                    {type.name}
+                                  </span>
+                                  <span className="text-[10px] font-bold text-gray-400 uppercase tracking-tighter mt-1">
+                                    Explore Type
+                                  </span>
+                                </div>
+                              </Link>
+                            ))
+                          ) : (
+                            <div className="col-span-2 py-10 text-center text-slate-400">
+                              No active types found.
+                            </div>
+                          )}
+                        </div>
+                      </div>
+                    </div>
+                  </div>
+                )}
+              </div>
+            </nav>
+          </div>
+
+          {/* CENTER: SEARCHBAR */}
+          <div className="hidden md:flex relative group">
+            <Search
+              size={16}
+              className="absolute left-4 top-1/2 -translate-y-1/2 text-slate-400 group-focus-within:text-blue-500 transition-colors"
+            />
+            <input
+              type="text"
+              className="bg-slate-100 rounded-full py-2.5 pl-11 pr-16 w-[350px] text-sm focus:outline-none focus:ring-4 focus:ring-blue-500/5 focus:bg-white border border-transparent focus:border-blue-100 transition-all"
+              placeholder="Quick search..."
+            />
+            <div className="absolute right-3 top-1/2 -translate-y-1/2 border border-slate-200 rounded-md px-1.5 py-0.5 text-[10px] text-slate-400 font-mono font-bold bg-white">
+              ⌘ K
             </div>
           </div>
-        </header>
-      </div>
-    </>
+
+          {/* RIGHT: USER ACTIONS */}
+          <div className="flex items-center gap-4">
+            <div className="flex items-center gap-1 border-r border-slate-100 pr-4">
+              <button className="p-2.5 text-slate-500 hover:bg-slate-50 hover:text-red-500 rounded-full transition relative">
+                <Heart size={20} />
+                <span className="absolute top-2 right-2 w-2 h-2 bg-red-500 rounded-full border-2 border-white"></span>
+              </button>
+              <button className="p-2.5 text-slate-500 hover:bg-slate-50 hover:text-blue-600 rounded-full transition relative">
+                <ShoppingBag size={20} />
+              </button>
+            </div>
+
+            {authUser ? (
+              <div className="flex items-center gap-3 pl-2">
+                <div className="text-right hidden sm:block">
+                  <p className="text-sm font-black text-slate-800 leading-none">
+                    {authUser.name}
+                  </p>
+                </div>
+                <Link href={getDashboardRoute()}>
+                  <button className="bg-slate-900 text-white px-5 py-2.5 rounded-xl text-xs font-black uppercase tracking-widest hover:bg-blue-600 transition active:scale-95 shadow-lg shadow-slate-200">
+                    My Account
+                  </button>
+                </Link>
+              </div>
+            ) : (
+              <Link href="/auth/login">
+                <button className="bg-blue-600 text-white px-8 py-2.5 rounded-xl text-xs font-black uppercase tracking-widest hover:bg-blue-700 transition active:scale-95 shadow-lg shadow-blue-200">
+                  Login
+                </button>
+              </Link>
+            )}
+
+            <button className="lg:hidden p-2 text-slate-600 hover:bg-slate-100 rounded-full transition">
+              <Menu className="w-6 h-6" />
+            </button>
+          </div>
+        </div>
+      </header>
+    </div>
   );
 }
