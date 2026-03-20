@@ -31,15 +31,24 @@ export const categoryService = {
 
   // Bulk update status
   updateManyStatus: (ids, status) =>
-    api.patch("/categories/status/bulk", { ids, status }, {
-      headers: { Accept: "application/json" },
-    }),
+    api.patch(
+      "/categories/status/bulk",
+      { ids, status },
+      {
+        headers: { Accept: "application/json" },
+      }
+    ),
 
   // Restore soft-deleted category
   restore: (id) =>
-    api.post(`/categories/${id}/restore`, {}, {
-      headers: { Accept: "application/json" },
-    }),
+    api.post(
+      `/categories/${id}/restore`,
+      {},
+      {
+        headers: { Accept: "application/json" },
+      }
+    ),
+  categoryActive: () => api.get("/category/active"),
 
   // Force delete category
   forceDelete: (id) => api.delete(`/categories/${id}/force`),

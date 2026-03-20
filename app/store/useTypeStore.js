@@ -1,5 +1,6 @@
 import { create } from "zustand";
 import { typesService } from "../services/typesService";
+import { fa } from "zod/v4/locales";
 
 export const useTypeStore = create((set, get) => ({
   types: [],
@@ -20,7 +21,6 @@ export const useTypeStore = create((set, get) => ({
         meta: res.data.meta,
         loading: false,
       });
-
     } catch (error) {
       console.error(error);
       set({ loading: false });
@@ -34,6 +34,18 @@ export const useTypeStore = create((set, get) => ({
       set({ activeTypes: res.data.data });
     } catch (error) {
       console.error("Fetch active types error:", error);
+    }
+  },
+
+  //Fetch action publis types
+
+  fatchTypeAction: async () => {
+    try {
+      const res = await typesService.getTypeAction();
+
+      set({ activeTypes: res.data.data });
+    } catch (error) {
+      console.error("Fetch action publis types error:", error);
     }
   },
 
@@ -52,7 +64,7 @@ export const useTypeStore = create((set, get) => ({
       await get().fetchTypes();
       return res.data;
     } catch (error) {
-        console.error("Create type error:", error);
+      console.error("Create type error:", error);
       throw error;
     }
   },
@@ -60,7 +72,7 @@ export const useTypeStore = create((set, get) => ({
   // Update
   updateType: async (id, payload) => {
     try {
-     await typesService.updateType(id, payload);
+      await typesService.updateType(id, payload);
 
       await get().fetchTypes();
     } catch (error) {
@@ -76,7 +88,6 @@ export const useTypeStore = create((set, get) => ({
       set((state) => ({
         types: state.types.filter((t) => t.id !== id),
       }));
-
     } catch (error) {
       console.error("Delete type error:", error);
     }
