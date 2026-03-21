@@ -28,7 +28,7 @@ import { useAuthGuard } from "../../../app/hooks/useAuthGuard";
 // Custom Components
 import DeleteConfirmModal from "../../../Components/admin/DeleteConfirmModal";
 import ContentLoader from "../../ContentLoader";
-
+import { encodeId } from "../../../app/utils/hashids";
 
 export default function CompactServiceCategoriesPage() {
   const { user: authUser } = useAuthGuard();
@@ -342,7 +342,9 @@ export default function CompactServiceCategoriesPage() {
                       <div className="flex justify-end gap-1 opacity-0 group-hover:opacity-100 transition-all">
                         <button
                           onClick={() =>
-                            router.push(`/admin/edit/categories/${item.id}`)
+                            router.push(
+                              `/admin/edit/categories/${encodeId(item.id)}`
+                            )
                           }
                           className="p-1.5 text-slate-400 hover:text-indigo-600 hover:bg-white rounded-lg border border-transparent hover:border-slate-100 transition-all"
                         >

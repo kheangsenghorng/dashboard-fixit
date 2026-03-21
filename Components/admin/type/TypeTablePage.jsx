@@ -28,6 +28,7 @@ import { useCategoryStore } from "../../../app/store/useCategoryStore"; // Added
 // Custom Components
 import DeleteConfirmModal from "../../../Components/admin/DeleteConfirmModal";
 import ContentLoader from "../../ContentLoader";
+import { encodeId } from "../../../app/utils/hashids";
 
 export default function TypeTablePage() {
   const { user: authUser } = useAuthGuard();
@@ -382,7 +383,7 @@ export default function TypeTablePage() {
                       <div className="flex justify-end gap-2 opacity-0 group-hover:opacity-100 transition-all translate-x-2 group-hover:translate-x-0">
                         <button
                           onClick={() =>
-                            router.push(`/admin/edit/types/${item.id}`)
+                            router.push(`/admin/edit/types/${encodeId(item.id)}`)
                           }
                           className="p-2 text-slate-400 hover:text-indigo-600 hover:bg-indigo-50 rounded-xl transition-all"
                         >

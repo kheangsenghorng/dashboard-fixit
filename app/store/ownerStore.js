@@ -22,6 +22,7 @@ export const useOwnerStore = create((set, get) => ({
     set({ loading: true, error: null });
     try {
       const res = await ownerService.getAll(params);
+
       set({
         owners: pickList(res),
         meta: pickMeta(res),
@@ -36,37 +37,42 @@ export const useOwnerStore = create((set, get) => ({
   },
 
   // ✅ NEW: fetch eligible users/owners
-// ownerStore.js (or userStore.js)
-fetchEligibleUsers: async (params = {}) => {
-  set({ fetchingEligibleUsers: true, error: null });
+  // ownerStore.js (or userStore.js)
+  fetchEligibleUsers: async (params = {}) => {
+    set({ fetchingEligibleUsers: true, error: null });
 
-  try {
-    const { data } = await api.get("/users", {
-      params: { per_page: 1000, ...params },
-    });
-
-    // if your API returns paginated: { data: { data: [...] } }
-    const list = (data?.data?.data || data?.data || []).map((u) => ({
-      id: u.id,
-      name: u.name,
-      email: u.email,
-    }));
-
-    set({ eligibleUsers: list, fetchingEligibleUsers: false });
-    return data;
-  } catch (err) {
-    set({
-      error: err.response?.data?.message || "Failed to load users",
-      fetchingEligibleUsers: false,
-    });
-    throw err;
-  }
-},
-  fetchOwner: async (id) => {
-    set({ loading: true, error: null });
     try {
-      const res = await ownerService.getOne(id);
-      set({ owner: res.data.data, loading: false });
+      const { data } = await api.get("/users", {
+        params: { per_page: 1000, ...params },
+      });
+
+      // if your API returns paginated: { data: { data: [...] } }
+      const list = (data?.data?.data || data?.data || []).map((u) => ({
+        id: u.id,
+        name: u.name,
+        email: u.email,
+      }));
+
+      set({ eligibleUsers: list, fetchingEligibleUsers: false });
+      return data;
+    } catch (err) {
+      set({
+        error: err.response?.data?.message || "Failed to load users",
+        fetchingEligibleUsers: false,
+      });
+      throw err;
+    }
+  },
+  fetchOwner: async (userId) => {
+    set({ loading: true, error: null });
+
+    try {
+      const res = await ownerService.getByUserId(userId);
+
+      set({
+        owner: res.data.data?.[0] || null, // because API returns array
+        loading: false,
+      });
     } catch (err) {
       set({
         error: err.response?.data?.message || "Failed to fetch owner",
@@ -74,7 +80,6 @@ fetchEligibleUsers: async (params = {}) => {
       });
     }
   },
-
   createOwner: async (data) => {
     set({ loading: true, error: null });
     try {
@@ -99,7 +104,9 @@ fetchEligibleUsers: async (params = {}) => {
       const res = await ownerService.update(id, data);
       set((state) => ({
         owner: res.data.data,
-        owners: state.owners.map((o) => (o.id === Number(id) ? res.data.data : o)),
+        owners: state.owners.map((o) =>
+          o.id === Number(id) ? res.data.data : o
+        ),
         loading: false,
       }));
       return true;
