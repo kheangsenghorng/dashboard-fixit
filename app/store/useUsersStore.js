@@ -17,6 +17,14 @@ export const useUsersStore = create((set, get) => ({
 
   setSearchTerm: (term) => set({ searchTerm: term }),
 
+  incrementOwners: () =>
+    set((state) => ({
+      counts: {
+        ...state.counts,
+        owners: (state.counts?.owners ?? 0) + 1,
+      },
+    })),
+
   withLoading: async (fn) => {
     set({ isLoading: true, error: null });
     try {

@@ -1,7 +1,6 @@
 import AdminDashboard from "../../../Components/admin/dashboard/AdminDashboard";
 import AdminShell from "../AdminShell";
 
-
 export const metadata = {
   title: "Admin Dashboard",
   description: "Overview of system activity",
@@ -10,8 +9,7 @@ export const metadata = {
 export default function Page() {
   return (
     <AdminShell>
-    <AdminDashboard />
-  </AdminShell>
+      <AdminDashboard />
+    </AdminShell>
   );
-
 }

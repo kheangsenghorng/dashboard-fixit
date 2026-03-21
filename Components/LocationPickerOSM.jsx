@@ -1,13 +1,30 @@
 "use client";
 
-import React, { useCallback, useEffect, useMemo, useRef, useState } from "react";
+import React, {
+  useCallback,
+  useEffect,
+  useMemo,
+  useRef,
+  useState,
+} from "react";
 import dynamic from "next/dynamic";
 
 // react-leaflet (client only)
-const MapContainer = dynamic(() => import("react-leaflet").then(m => m.MapContainer), { ssr: false });
-const TileLayer = dynamic(() => import("react-leaflet").then(m => m.TileLayer), { ssr: false });
-const Marker = dynamic(() => import("react-leaflet").then(m => m.Marker), { ssr: false });
-const useMapEvents = dynamic(() => import("react-leaflet").then(m => m.useMapEvents), { ssr: false });
+const MapContainer = dynamic(
+  () => import("react-leaflet").then((m) => m.MapContainer),
+  { ssr: false }
+);
+const TileLayer = dynamic(
+  () => import("react-leaflet").then((m) => m.TileLayer),
+  { ssr: false }
+);
+const Marker = dynamic(() => import("react-leaflet").then((m) => m.Marker), {
+  ssr: false,
+});
+const useMapEvents = dynamic(
+  () => import("react-leaflet").then((m) => m.useMapEvents),
+  { ssr: false }
+);
 
 function ClickHandler({ onPick }) {
   useMapEvents({
@@ -24,8 +41,9 @@ export default function LocationPickerOSM({
   defaultCenter = { lat: 11.5564, lng: 104.9282 },
   height = 420,
 }) {
-
-  const [pos, setPos] = useState(value?.lat ? { lat: value.lat, lng: value.lng } : null);
+  const [pos, setPos] = useState(
+    value?.lat ? { lat: value.lat, lng: value.lng } : null
+  );
   const [address, setAddress] = useState(value?.address || "");
   const [loadingAddr, setLoadingAddr] = useState(false);
   const [markerIcon, setMarkerIcon] = useState(null);
@@ -39,8 +57,10 @@ export default function LocationPickerOSM({
     import("leaflet").then((L) => {
       const icon = new L.Icon({
         iconUrl: "https://unpkg.com/leaflet@1.9.4/dist/images/marker-icon.png",
-        iconRetinaUrl: "https://unpkg.com/leaflet@1.9.4/dist/images/marker-icon-2x.png",
-        shadowUrl: "https://unpkg.com/leaflet@1.9.4/dist/images/marker-shadow.png",
+        iconRetinaUrl:
+          "https://unpkg.com/leaflet@1.9.4/dist/images/marker-icon-2x.png",
+        shadowUrl:
+          "https://unpkg.com/leaflet@1.9.4/dist/images/marker-shadow.png",
         iconSize: [25, 41],
         iconAnchor: [12, 41],
       });
@@ -50,60 +70,63 @@ export default function LocationPickerOSM({
   }, []);
 
   // Reverse Geocode
-  const reverseGeocode = useCallback(async (lat, lng) => {
-    if (!process.env.NEXT_PUBLIC_API_URL) {
-      console.error("NEXT_PUBLIC_API_URL missing");
-      return;
-    }
-
-    // prevent duplicate calls
-    const last = lastCoordsRef.current;
-    if (last && last.lat === lat && last.lng === lng) return;
-
-    lastCoordsRef.current = { lat, lng };
-
-    setLoadingAddr(true);
-
-    try {
-      const url =
-        `${process.env.NEXT_PUBLIC_API_URL}/geocode/reverse` +
-        `?lat=${encodeURIComponent(lat)}&lng=${encodeURIComponent(lng)}`;
-
-      const res = await fetch(url, {
-        headers: { Accept: "application/json" },
-      });
-
-      if (!res.ok) {
-        const txt = await res.text();
-        throw new Error(`Reverse geocode failed: ${res.status} ${txt}`);
+  const reverseGeocode = useCallback(
+    async (lat, lng) => {
+      if (!process.env.NEXT_PUBLIC_API_URL) {
+        console.error("NEXT_PUBLIC_API_URL missing");
+        return;
       }
 
-      const json = await res.json();
-      const display = json?.data?.display_name || "";
+      // prevent duplicate calls
+      const last = lastCoordsRef.current;
+      if (last && last.lat === lat && last.lng === lng) return;
 
-      setAddress(display);
-      onChange?.({ lat, lng, address: display });
+      lastCoordsRef.current = { lat, lng };
 
-    } catch (err) {
-      console.error(err);
-      setAddress("");
-      onChange?.({ lat, lng, address: "" });
-    } finally {
-      setLoadingAddr(false);
-    }
+      setLoadingAddr(true);
 
-  }, [onChange]);
+      try {
+        const url =
+          `${process.env.NEXT_PUBLIC_API_URL}/api/geocode/reverse` +
+          `?lat=${encodeURIComponent(lat)}&lng=${encodeURIComponent(lng)}`;
 
-  const pick = useCallback((lat, lng) => {
-    setPos({ lat, lng });
+        const res = await fetch(url, {
+          headers: { Accept: "application/json" },
+        });
 
-    if (debounceRef.current) clearTimeout(debounceRef.current);
+        if (!res.ok) {
+          const txt = await res.text();
+          throw new Error(`Reverse geocode failed: ${res.status} ${txt}`);
+        }
 
-    debounceRef.current = setTimeout(() => {
-      reverseGeocode(lat, lng);
-    }, 400);
+        const json = await res.json();
+        const display = json?.data?.display_name || "";
 
-  }, [reverseGeocode]);
+        setAddress(display);
+        onChange?.({ lat, lng, address: display });
+      } catch (err) {
+        console.error(err);
+        setAddress("");
+        onChange?.({ lat, lng, address: "" });
+      } finally {
+        setLoadingAddr(false);
+      }
+    },
+    [onChange]
+  );
+
+  const pick = useCallback(
+    (lat, lng) => {
+      setPos({ lat, lng });
+
+      if (debounceRef.current) clearTimeout(debounceRef.current);
+
+      debounceRef.current = setTimeout(() => {
+        reverseGeocode(lat, lng);
+      }, 400);
+    },
+    [reverseGeocode]
+  );
 
   const useMyLocation = useCallback(() => {
     if (!navigator.geolocation) {
@@ -133,7 +156,6 @@ export default function LocationPickerOSM({
 
   return (
     <div className="space-y-3">
-
       <div className="flex items-center gap-2">
         <button
           type="button"
@@ -191,7 +213,11 @@ export default function LocationPickerOSM({
         onChange={(e) => {
           const newAddr = e.target.value;
           setAddress(newAddr);
-          onChange?.({ lat: pos?.lat ?? null, lng: pos?.lng ?? null, address: newAddr });
+          onChange?.({
+            lat: pos?.lat ?? null,
+            lng: pos?.lng ?? null,
+            address: newAddr,
+          });
         }}
         placeholder="Address (auto from map, you can edit)"
         className="w-full px-4 py-3 rounded-2xl border border-slate-200"

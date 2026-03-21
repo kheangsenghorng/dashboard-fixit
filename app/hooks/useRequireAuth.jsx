@@ -1,9 +1,11 @@
 "use client";
 
 import { useEffect } from "react";
+import { useRouter } from "next/navigation";
 import { useAuthStore } from "../store/useAuthStore";
 
-export function useAuthGuard() {
+export function useRequireAuth() {
+  const router = useRouter();
   const user = useAuthStore((s) => s.user);
   const initialized = useAuthStore((s) => s.initialized);
   const loadUser = useAuthStore((s) => s.loadUser);
@@ -14,6 +16,12 @@ export function useAuthGuard() {
     }
   }, [initialized, loadUser]);
 
-  // ✅ No redirect here — safe to use in navbar for all users
+  useEffect(() => {
+    if (!initialized) return; // ← wait for session to load
+    if (user === null) {
+      router.replace("/auth/login"); // ← only redirect on protected pages
+    }
+  }, [user, initialized, router]);
+
   return { user, initialized };
 }

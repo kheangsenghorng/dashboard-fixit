@@ -31,6 +31,7 @@ import { formatPhoneNumber } from "../../../app/utils/phoneUtils";
 // Custom Sub-Components
 import DeleteConfirmModal from "../../../Components/admin/DeleteConfirmModal";
 import ContentLoader from "../../ContentLoader";
+import { encodeId } from "../../../app/utils/hashids";
 
 export default function UsersPage() {
   const { user: authUser } = useAuthGuard();
@@ -67,27 +68,29 @@ export default function UsersPage() {
     }
   }, [authUser, activeRole, activeStatus]);
 
-  const buildParams = useCallback((overrides = {}) => {
-    const params = {
-      page: overrides.page ?? 1,
-    };
-  
-    if (searchValue?.trim()) {
-      params.search = searchValue.trim();
-    }
-  
-    if (activeRole !== "all") {
-      params.role = activeRole;
-    }
-  
-    if (activeStatus !== "all") {
-      params.is_active = activeStatus === "active";
-    }
-  
-    return params;
-  }, [searchValue, activeRole, activeStatus]);
+  const buildParams = useCallback(
+    (overrides = {}) => {
+      const params = {
+        page: overrides.page ?? 1,
+      };
 
-  
+      if (searchValue?.trim()) {
+        params.search = searchValue.trim();
+      }
+
+      if (activeRole !== "all") {
+        params.role = activeRole;
+      }
+
+      if (activeStatus !== "all") {
+        params.is_active = activeStatus === "active";
+      }
+
+      return params;
+    },
+    [searchValue, activeRole, activeStatus]
+  );
+
   const refreshData = async (overrides = {}) => {
     await fetchUsers(buildParams(overrides));
   };
@@ -104,13 +107,12 @@ export default function UsersPage() {
     next.has(id) ? next.delete(id) : next.add(id);
     setSelectedSet(next);
   };
-  
 
   useEffect(() => {
     const delay = setTimeout(() => {
       if (!isFirstLoad) refreshData({ page: 1 });
     }, 500);
-  
+
     return () => clearTimeout(delay);
   }, [searchValue]);
 
@@ -225,9 +227,9 @@ export default function UsersPage() {
 
       {/* STATS */}
       <div className="max-w-7xl mx-auto grid grid-cols-1 md:grid-cols-4 gap-6">
-        {stats.map((stat) => (
+        {stats.map((stat, index) => (
           <button
-            key={stat.id}
+            key={index + 1}
             onClick={() => {
               setActiveRole(stat.id);
               setSelectedSet(new Set());
@@ -396,7 +398,9 @@ export default function UsersPage() {
                       <div className="flex justify-end gap-1 opacity-0 group-hover:opacity-100 transition-all">
                         <button
                           onClick={() =>
-                            router.push(`/admin/edit/users/${item.id}`)
+                            router.push(
+                              `/admin/edit/users/${encodeId(item.id)}`
+                            )
                           }
                           className="p-1.5 text-slate-400 hover:text-indigo-600 hover:bg-white rounded-md border border-transparent hover:border-slate-100 shadow-sm"
                         >
