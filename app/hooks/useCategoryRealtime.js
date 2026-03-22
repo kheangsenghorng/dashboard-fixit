@@ -1,7 +1,7 @@
 "use client";
 
 import { useEffect } from "react";
-import echo from "../../lib/echo";
+import { getEcho } from "../../lib/echo";
 import { useCategoryStore } from "../store/useCategoryStore";
 
 export const useCategoryRealtime = () => {
@@ -10,16 +10,20 @@ export const useCategoryRealtime = () => {
   );
 
   useEffect(() => {
+    const echo = getEcho();
     if (!echo) return;
 
     const channel = echo.channel("categories");
 
-    channel.listen(".category.changed", (event) => {
+    const handleCategoryChanged = (event) => {
       applyCategoryChange(event);
-    });
+    };
+
+    channel.listen(".category.changed", handleCategoryChanged);
 
     return () => {
-      echo.leave("categories");
+      channel.stopListening(".category.changed", handleCategoryChanged);
+      echo.leaveChannel("categories");
     };
   }, [applyCategoryChange]);
 };

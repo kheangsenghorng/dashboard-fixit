@@ -17,8 +17,6 @@ export default function ListenToastProvider() {
       return;
     }
 
-    console.log("BASE_URL:", process.env.NEXT_PUBLIC_API_URL); // verify env is loaded
-
     const pusher = new Pusher(process.env.NEXT_PUBLIC_PUSHER_APP_KEY, {
       cluster: process.env.NEXT_PUBLIC_PUSHER_APP_CLUSTER,
       forceTLS: true,
