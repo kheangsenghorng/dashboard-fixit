@@ -3,12 +3,16 @@
 import { useEffect } from "react";
 import { getEcho } from "@/lib/echo";
 import { useTypeStore } from "../../app/store/useTypeStore";
-
+import { useServiceStore } from "../../app/store/useServiceStore";
 
 export default function TypeListener() {
   const addType = useTypeStore((state) => state.addType);
   const replaceType = useTypeStore((state) => state.replaceType);
   const removeType = useTypeStore((state) => state.removeType);
+
+  const fetchServicesCategory = useServiceStore(
+    (state) => state.fetchServicesCategory
+  );
 
   useEffect(() => {
     const echo = getEcho();
@@ -25,6 +29,11 @@ export default function TypeListener() {
 
       if (action === "updated" && type) {
         replaceType(type);
+
+        // refresh services if type status changed
+        if (type?.category?.id) {
+          fetchServicesCategory(type.category.id);
+        }
       }
 
       if (action === "deleted") {
@@ -35,7 +44,7 @@ export default function TypeListener() {
     return () => {
       echo.leave("types");
     };
-  }, [addType, replaceType, removeType]);
+  }, [addType, replaceType, removeType, fetchServicesCategory]);
 
   return null;
 }

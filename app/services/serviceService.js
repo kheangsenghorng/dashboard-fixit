@@ -21,7 +21,7 @@ export const serviceService = {
 
   // Update service
   update: (id, data) =>
-    api.put(`/services/${id}`, data, {
+    api.post(`/services/${id}`, data, {
       headers: { Accept: "application/json" },
     }),
 
@@ -42,7 +42,7 @@ export const serviceService = {
       { ids, status },
       {
         headers: { Accept: "application/json" },
-      },
+      }
     ),
 
   /// Route public servive
