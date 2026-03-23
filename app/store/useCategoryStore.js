@@ -32,7 +32,7 @@ export const useCategoryStore = create((set, get) => ({
   },
 
   // FETCH ACTIVE CATEGORIES
-  getActiveCategories: async () => {
+  FetchActiveCategories: async () => {
     set({ isLoading: true, error: null });
 
     try {

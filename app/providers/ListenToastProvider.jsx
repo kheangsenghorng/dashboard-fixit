@@ -40,10 +40,6 @@ export default function ListenToastProvider() {
 
     const channel = pusher.subscribe("private-admin.notifications");
 
-    const handleSubscriptionError = (err) => {
-      console.error("Pusher subscription error:", err);
-    };
-
     const handleOwnerCreated = (data) => {
       const owner = data?.owner;
 
@@ -102,11 +98,9 @@ export default function ListenToastProvider() {
       );
     };
 
-    channel.bind("pusher:subscription_error", handleSubscriptionError);
     channel.bind("owner.created", handleOwnerCreated);
 
     return () => {
-      channel.unbind("pusher:subscription_error", handleSubscriptionError);
       channel.unbind("owner.created", handleOwnerCreated);
       pusher.unsubscribe("private-admin.notifications");
       pusher.disconnect();

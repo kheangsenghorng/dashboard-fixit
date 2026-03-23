@@ -11,7 +11,7 @@ import { useAuthHandler } from "../../app/hooks/useAuthHandler";
 export default function LoginClient() {
   useGuestGuard();
   const searchParams = useSearchParams();
-  
+
   // State for toggling password visibility
   const [showPassword, setShowPassword] = useState(false);
 
@@ -106,7 +106,11 @@ export default function LoginClient() {
         <p className="text-center text-sm text-gray-600">
           Don't have an account?{" "}
           <Link
-            href="/auth/register"
+            href={
+              redirect
+                ? `/auth/register?redirect=${encodeURIComponent(redirect)}`
+                : "/auth/register"
+            }
             className="text-indigo-600 font-bold hover:underline"
           >
             Create Account
