@@ -4,10 +4,9 @@ import { useEffect } from "react";
 import { getEcho } from "@/lib/echo";
 import { useServiceStore } from "../../app/store/useServiceStore";
 
-
 export default function ServiceListener() {
   const addService = useServiceStore((state) => state.addService);
-  const updateService = useServiceStore((state) => state.updateService);
+  const replaceService = useServiceStore((state) => state.replaceService);
   const removeService = useServiceStore((state) => state.removeService);
 
   useEffect(() => {
@@ -19,31 +18,23 @@ export default function ServiceListener() {
     channel.listen(".service.changed", (payload) => {
       const { action, service, serviceId } = payload;
 
-      if (action === "created") {
-        if (service?.status === "active") {
-          addService(service);
-        }
+      if (action === "created" && service) {
+        addService(service);
       }
 
-      if (action === "updated") {
-        if (!service) return;
-
-        if (service.status !== "active") {
-          removeService(service.id);
-        } else {
-          updateService(service);
-        }
+      if (action === "updated" && service) {
+        replaceService(service);
       }
 
-      if (action === "deleted") {
+      if (action === "deleted" && serviceId) {
         removeService(serviceId);
       }
     });
 
     return () => {
-      echo.leave("services");
+      echo.leaveChannel("services");
     };
-  }, [addService, updateService, removeService]);
+  }, [addService, replaceService, removeService]);
 
   return null;
 }
