@@ -14,31 +14,10 @@ import { encodeId } from "./utils/hashids";
 import NavbarFixit from "../Components/nabvar/Navbar";
 import Footer from "../Components/nabvar/Footer";
 import TypeListener from "../Components/realtime/TypeListener";
+import FloatingStartSelling from "../Components/FloatingStartSelling";
 
 const FixitLandingPage = () => {
-  const { fatchTypeAction, isLoading: typeLoading } = useTypeStore();
-  const { categories, isLoading, error, getActiveCategories } =
-    useCategoryStore();
-
-  useCategoryRealtime();
-
-  useEffect(() => {
-    getActiveCategories();
-    fatchTypeAction();
-  }, [getActiveCategories, fatchTypeAction]);
-
-  if (isLoading || typeLoading) {
-    return (
-      <div className="min-h-screen flex items-center justify-center bg-white">
-        <div className="flex flex-col items-center gap-4">
-          <div className="w-12 h-12 border-4 border-blue-600 border-t-transparent rounded-full animate-spin"></div>
-          <p className="text-slate-400 font-bold text-xs uppercase tracking-widest animate-pulse">
-            Loading SABY-TINH...
-          </p>
-        </div>
-      </div>
-    );
-  }
+  const { categories, isLoading, error } = useCategoryStore();
 
   return (
     <>
@@ -196,29 +175,7 @@ const FixitLandingPage = () => {
         </div>
 
         {/* --- FLOATING "START SELLING" BUTTON --- */}
-        <div className="fixed bottom-10 right-10 flex flex-col items-end z-[90] group">
-          {/* Mascot Icon */}
-          <div className="w-16 h-16 mb-2 animate-bounce hover:animate-none cursor-pointer">
-            <img
-              src="https://cdn-icons-png.flaticon.com/512/6028/6028680.png"
-              alt="Mascot"
-              className="w-full h-full object-contain"
-            />
-          </div>
-          <button className="bg-white shadow-[0_20px_50px_rgba(0,0,0,0.1)] border border-slate-100 rounded-full p-2 pr-8 flex items-center gap-4 hover:scale-105 transition-all duration-300 active:scale-95 group">
-            <div className="bg-slate-900 p-3 rounded-full text-white group-hover:bg-blue-600 transition-colors">
-              <LayoutGrid size={20} />
-            </div>
-            <div className="text-left">
-              <p className="text-[9px] text-slate-400 font-black leading-none uppercase tracking-widest mb-1">
-                Start Selling
-              </p>
-              <p className="text-sm font-black text-slate-800 flex items-center gap-2 group-hover:text-blue-600 transition-colors">
-                Join Now <ArrowRight size={16} />
-              </p>
-            </div>
-          </button>
-        </div>
+        <FloatingStartSelling />
         <Footer />
       </div>
     </>

@@ -14,11 +14,12 @@ import {
 } from "lucide-react";
 import { useRouter } from "next/navigation";
 import { useAuthStore } from "../../app/store/useAuthStore";
-
+import { useSearchParams } from "next/navigation";
 
 export default function RegisterClient() {
   const router = useRouter();
-
+  const searchParams = useSearchParams();
+  const redirect = searchParams.get("redirect");
   const register = useAuthStore((s) => s.register);
   const loading = useAuthStore((s) => s.loading);
   const storeError = useAuthStore((s) => s.error);
@@ -64,7 +65,11 @@ export default function RegisterClient() {
         role: formData.role,
       });
 
-      router.push("/auth/verify-otp");
+      router.push(
+        `/auth/verify-otp${
+          redirect ? `?redirect=${encodeURIComponent(redirect)}` : ""
+        }`
+      );
     } catch (e) {
       console.error("Register error:", e);
     }
@@ -195,7 +200,11 @@ export default function RegisterClient() {
         <p className="text-center text-sm text-gray-600">
           Already have an account?{" "}
           <Link
-            href="/auth/login"
+            href={
+              redirect
+                ? `/auth/login?redirect=${encodeURIComponent(redirect)}`
+                : "/auth/login"
+            }
             className="text-blue-600 font-bold hover:underline"
           >
             Sign In
