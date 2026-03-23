@@ -4,6 +4,7 @@ import ToastProvider from "./providers/ToastProvider";
 import "leaflet/dist/leaflet.css";
 import AuthInitializer from "./AuthInitializer";
 import ListenToastProvider from "./providers/ListenToastProvider";
+import RealtimeListeners from "../Components/realtime/RealtimeListeners";
 
 const geistSans = Geist({
   variable: "--font-geist-sans",
@@ -27,6 +28,7 @@ export default function RootLayout({ children }) {
         className={`${geistSans.variable} ${geistMono.variable} antialiased`}
       >
         <AuthInitializer />
+        <RealtimeListeners />
         {children}
 
         {/* ✅ Toasts available everywhere */}

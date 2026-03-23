@@ -1,13 +1,73 @@
 import { create } from "zustand";
 import { typesService } from "../services/typesService";
-import { fa } from "zod/v4/locales";
 
 export const useTypeStore = create((set, get) => ({
   types: [],
   activeTypes: [],
+  typeCategory: [],
   type: null,
   meta: null,
   loading: false,
+
+  // local setters for realtime
+  setTypes: (types, meta = null) =>
+    set({
+      types,
+      meta,
+    }),
+
+  setActiveTypes: (activeTypes) =>
+    set({
+      activeTypes,
+    }),
+
+  addType: (newType) =>
+    set((state) => {
+      const existsInTypes = state.types.some((t) => t.id === newType.id);
+      const existsInActive = state.activeTypes.some((t) => t.id === newType.id);
+
+      return {
+        types: existsInTypes ? state.types : [newType, ...state.types],
+        activeTypes:
+          newType.status === "active"
+            ? existsInActive
+              ? state.activeTypes
+              : [newType, ...state.activeTypes]
+            : state.activeTypes,
+      };
+    }),
+
+  replaceType: (updatedType) =>
+    set((state) => {
+      const existsInTypes = state.types.some((t) => t.id === updatedType.id);
+      const existsInActive = state.activeTypes.some(
+        (t) => t.id === updatedType.id,
+      );
+
+      return {
+        types: existsInTypes
+          ? state.types.map((t) => (t.id === updatedType.id ? updatedType : t))
+          : [updatedType, ...state.types],
+
+        activeTypes:
+          updatedType.status === "active"
+            ? existsInActive
+              ? state.activeTypes.map((t) =>
+                  t.id === updatedType.id ? updatedType : t,
+                )
+              : [updatedType, ...state.activeTypes]
+            : state.activeTypes.filter((t) => t.id !== updatedType.id),
+
+        type: state.type?.id === updatedType.id ? updatedType : state.type,
+      };
+    }),
+
+  removeType: (id) =>
+    set((state) => ({
+      types: state.types.filter((t) => t.id !== id),
+      activeTypes: state.activeTypes.filter((t) => t.id !== id),
+      type: state.type?.id === id ? null : state.type,
+    })),
 
   // Fetch all
   fetchTypes: async (filters = {}) => {
@@ -22,7 +82,7 @@ export const useTypeStore = create((set, get) => ({
         loading: false,
       });
     } catch (error) {
-      console.error(error);
+      console.error("Fetch types error:", error);
       set({ loading: false });
     }
   },
@@ -31,37 +91,76 @@ export const useTypeStore = create((set, get) => ({
   fetchActiveTypes: async () => {
     try {
       const res = await typesService.getActive();
-      set({ activeTypes: res.data.data });
+
+      set({
+        activeTypes: res.data.data,
+      });
     } catch (error) {
       console.error("Fetch active types error:", error);
     }
   },
 
-  //Fetch action publis types
-
+  // Fetch action publish types
   fatchTypeAction: async () => {
     try {
       const res = await typesService.getTypeAction();
 
-      set({ activeTypes: res.data.data });
+      set({
+        activeTypes: res?.data?.data || [],
+      });
     } catch (error) {
-      console.error("Fetch action publis types error:", error);
+      console.error("Fetch action public types error:", {
+        message: error?.message,
+        status: error?.response?.status,
+        data: error?.response?.data,
+        url: error?.config?.url,
+      });
+
+      set({ activeTypes: [] });
     }
   },
 
+  //Fetch by category id category
+  fetchTypesCategory: async (categoryId) => {
+    if (!categoryId) {
+      set({ activeTypes: [] });
+      return;
+    }
+
+    try {
+      const res = await typesService.getTypesByCategory(categoryId);
+
+      set({
+        activeTypes: res?.data?.data || [],
+      });
+    } catch (error) {
+      console.error("Fetch types by category error:", error);
+      set({ activeTypes: [] });
+    }
+  },
   // Fetch single
   fetchType: async (id) => {
     try {
       const res = await typesService.getOne(id);
-      set({ type: res.data.data });
+
+      set({
+        type: res.data.data,
+      });
     } catch (error) {
       console.error("Fetch type error:", error);
     }
   },
+
+  // Create
   createType: async (data) => {
     try {
       const res = await typesService.create(data);
-      await get().fetchTypes();
+
+      // optional immediate local update
+      if (res.data?.data) {
+        get().addType(res.data.data);
+      }
+
       return res.data;
     } catch (error) {
       console.error("Create type error:", error);
@@ -72,11 +171,16 @@ export const useTypeStore = create((set, get) => ({
   // Update
   updateType: async (id, payload) => {
     try {
-      await typesService.updateType(id, payload);
+      const res = await typesService.updateType(id, payload);
 
-      await get().fetchTypes();
+      if (res.data?.data) {
+        get().replaceType(res.data.data);
+      }
+
+      return res.data;
     } catch (error) {
       console.error("Update type error:", error);
+      throw error;
     }
   },
 
@@ -85,11 +189,10 @@ export const useTypeStore = create((set, get) => ({
     try {
       await typesService.remove(id);
 
-      set((state) => ({
-        types: state.types.filter((t) => t.id !== id),
-      }));
+      get().removeType(id);
     } catch (error) {
       console.error("Delete type error:", error);
+      throw error;
     }
   },
 
@@ -97,9 +200,15 @@ export const useTypeStore = create((set, get) => ({
   deleteManyTypes: async (ids) => {
     try {
       await typesService.deleteMany(ids);
-      await get().fetchTypes();
+
+      set((state) => ({
+        types: state.types.filter((t) => !ids.includes(t.id)),
+        activeTypes: state.activeTypes.filter((t) => !ids.includes(t.id)),
+        type: ids.includes(state.type?.id) ? null : state.type,
+      }));
     } catch (error) {
       console.error("Bulk delete error:", error);
+      throw error;
     }
   },
 
@@ -107,9 +216,23 @@ export const useTypeStore = create((set, get) => ({
   updateManyStatus: async (ids, status) => {
     try {
       await typesService.updateManyStatus(ids, status);
-      await get().fetchTypes();
+
+      set((state) => ({
+        types: state.types.map((t) =>
+          ids.includes(t.id) ? { ...t, status } : t,
+        ),
+        activeTypes:
+          status === "active"
+            ? state.activeTypes
+            : state.activeTypes.filter((t) => !ids.includes(t.id)),
+        type:
+          state.type && ids.includes(state.type.id)
+            ? { ...state.type, status }
+            : state.type,
+      }));
     } catch (error) {
       console.error("Bulk status update error:", error);
+      throw error;
     }
   },
 }));

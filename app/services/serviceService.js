@@ -1,22 +1,17 @@
 import api from "@/lib/api";
 
 export const serviceService = {
-
   // Get all services
-  getAll: (params) =>
-    api.get("/services", { params }),
+  getAll: (params) => api.get("/services", { params }),
 
- // Get all total services count
-  getCount: () =>
-    api.get("/services/stats", ),
+  // Get all total services count
+  getCount: () => api.get("/services/stats"),
 
   // Get active services
-  getActive: (params) =>
-    api.get("/services/active", { params }),
+  getActive: (params) => api.get("/services/active", { params }),
 
   // Get single service
-  getOne: (id) =>
-    api.get(`/services/${id}`),
+  getOne: (id) => api.get(`/services/${id}`),
 
   // Create service
   create: (data) =>
@@ -31,8 +26,7 @@ export const serviceService = {
     }),
 
   // Delete single service
-  remove: (id) =>
-    api.delete(`/services/${id}`),
+  remove: (id) => api.delete(`/services/${id}`),
 
   // Bulk delete services
   removeMany: (ids) =>
@@ -43,7 +37,25 @@ export const serviceService = {
 
   // Bulk update status
   updateManyStatus: (ids, status) =>
-    api.patch("/services/status/bulk", { ids, status }, {
-      headers: { Accept: "application/json" },
+    api.patch(
+      "/services/status/bulk",
+      { ids, status },
+      {
+        headers: { Accept: "application/json" },
+      },
+    ),
+
+  /// Route public servive
+
+  //Get by category by id servies
+  getServiesByCategory: (categoryId) =>
+    api.get("/service/active", {
+      params: { category_id: categoryId },
+    }),
+
+  // Get services by type
+  getServicesByType: (typeId) =>
+    api.get("/service/active", {
+      params: { type_id: typeId },
     }),
 };

@@ -12,15 +12,24 @@ export default function ListenToastProvider() {
   useEffect(() => {
     const token = getToken();
 
+    // Guest user: do nothing
     if (!token) {
-      console.warn("No auth token found, skipping Pusher subscription.");
       return;
     }
 
-    const pusher = new Pusher(process.env.NEXT_PUBLIC_PUSHER_APP_KEY, {
-      cluster: process.env.NEXT_PUBLIC_PUSHER_APP_CLUSTER,
+    const appKey = process.env.NEXT_PUBLIC_PUSHER_APP_KEY;
+    const cluster = process.env.NEXT_PUBLIC_PUSHER_APP_CLUSTER;
+    const apiUrl = process.env.NEXT_PUBLIC_API_URL;
+
+    if (!appKey || !cluster || !apiUrl) {
+      console.error("Missing Pusher environment variables.");
+      return;
+    }
+
+    const pusher = new Pusher(appKey, {
+      cluster,
       forceTLS: true,
-      authEndpoint: `${process.env.NEXT_PUBLIC_API_URL}/broadcasting/auth`,
+      authEndpoint: `${apiUrl}/broadcasting/auth`,
       auth: {
         headers: {
           Authorization: `Bearer ${token}`,
@@ -28,15 +37,15 @@ export default function ListenToastProvider() {
         },
       },
     });
- 
+
     const channel = pusher.subscribe("private-admin.notifications");
 
-    channel.bind("pusher:subscription_error", (err) => {
+    const handleSubscriptionError = (err) => {
       console.error("Pusher subscription error:", err);
-    });
+    };
 
-    channel.bind("owner.created", (data) => {
-      const owner = data.owner;
+    const handleOwnerCreated = (data) => {
+      const owner = data?.owner;
 
       const createdAt = new Date().toLocaleString("en-US", {
         month: "short",
@@ -91,10 +100,14 @@ export default function ListenToastProvider() {
           pauseOnHover: true,
         }
       );
-    });
+    };
+
+    channel.bind("pusher:subscription_error", handleSubscriptionError);
+    channel.bind("owner.created", handleOwnerCreated);
 
     return () => {
-      channel.unbind_all();
+      channel.unbind("pusher:subscription_error", handleSubscriptionError);
+      channel.unbind("owner.created", handleOwnerCreated);
       pusher.unsubscribe("private-admin.notifications");
       pusher.disconnect();
     };

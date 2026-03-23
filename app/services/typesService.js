@@ -7,9 +7,6 @@ export const typesService = {
   // Get active types
   getActive: () => api.get("/types/active"),
 
-  //Get action publis types
-  getTypeAction:() => api.get("/type/active"),
-
   // Get one type
   getOne: (id) => api.get(`/types/${id}`),
 
@@ -27,7 +24,7 @@ export const typesService = {
     const res = await api.post(`/types/${id}`, data, {
       headers: { Accept: "application/json" },
     });
-  
+
     return res;
   },
 
@@ -46,4 +43,11 @@ export const typesService = {
       ids,
       status,
     }),
+
+  //Get action publis types
+  getTypeAction: () => api.get("/type/active"),
+
+  // Get actiuon public types by id category
+  getTypesByCategory: (categoryId) =>
+    api.get("/type/active", { params: { category_id: categoryId } }),
 };
