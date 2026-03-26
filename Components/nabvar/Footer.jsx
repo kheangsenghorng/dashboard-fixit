@@ -1,41 +1,50 @@
-'use client';
+"use client";
 
-import React from 'react';
-import Link from 'next/link';
-import { 
-  FaFacebookF, 
-  FaTwitter, 
-  FaInstagram, 
-  FaLinkedinIn 
-} from 'react-icons/fa';
-import { ShieldCheck } from 'lucide-react';
+import React from "react";
+import Link from "next/link";
+import {
+  FaFacebookF,
+  FaTwitter,
+  FaInstagram,
+  FaLinkedinIn,
+} from "react-icons/fa";
+import { ShieldCheck } from "lucide-react";
 
 const Footer = () => {
   return (
     <footer className="bg-white border-t border-slate-100 font-sans">
-      
       {/* --- Main Navigation Section --- */}
       <div className="max-w-[1400px] mx-auto px-6 py-10">
         {/* grid-cols-2 for mobile pairs items side-by-side */}
         <div className="grid grid-cols-2 lg:grid-cols-6 gap-y-10 gap-x-6">
-          
           {/* Brand and Mission (Row 1 Left on Mobile) */}
           <div className="col-span-1 lg:col-span-2 space-y-4">
             <Link href="/" className="inline-block">
-              <span className="text-lg font-bold text-slate-900">
-                Saby-Tinh
-              </span>
+              <span className="text-lg font-bold text-slate-900">Fixit</span>
             </Link>
 
             <p className="text-slate-500 text-xs sm:text-sm leading-relaxed max-w-[260px]">
-              Connecting you with the best local stores and premium quality products.
+              Connecting you with the best local stores and premium quality
+              products.
             </p>
 
             <div className="flex gap-2 pt-2">
-              <SocialBtn icon={<FaFacebookF size={12} />} color="text-blue-600 bg-blue-50 border-blue-100" />
-              <SocialBtn icon={<FaTwitter size={12} />}   color="text-sky-500 bg-sky-50 border-sky-100" />
-              <SocialBtn icon={<FaInstagram size={12} />} color="text-rose-500 bg-rose-50 border-rose-100" />
-              <SocialBtn icon={<FaLinkedinIn size={12} />} color="text-indigo-700 bg-indigo-50 border-indigo-100" />
+              <SocialBtn
+                icon={<FaFacebookF size={12} />}
+                color="text-blue-600 bg-blue-50 border-blue-100"
+              />
+              <SocialBtn
+                icon={<FaTwitter size={12} />}
+                color="text-sky-500 bg-sky-50 border-sky-100"
+              />
+              <SocialBtn
+                icon={<FaInstagram size={12} />}
+                color="text-rose-500 bg-rose-50 border-rose-100"
+              />
+              <SocialBtn
+                icon={<FaLinkedinIn size={12} />}
+                color="text-indigo-700 bg-indigo-50 border-indigo-100"
+              />
             </div>
           </div>
 
@@ -83,7 +92,6 @@ const Footer = () => {
       {/* --- Bottom Status Bar --- */}
       <div className="bg-slate-50 border-t border-slate-100 py-4">
         <div className="max-w-[1400px] mx-auto px-6 flex flex-col md:flex-row justify-between items-center gap-4">
-          
           <div className="flex items-center gap-3">
             <span className="text-slate-500 text-xs">
               © {new Date().getFullYear()} Saby-Tinh
@@ -106,7 +114,6 @@ const Footer = () => {
               <span className="text-xs text-emerald-600">Live</span>
             </div>
           </div>
-
         </div>
       </div>
     </footer>
@@ -127,7 +134,9 @@ const FooterLink = ({ href, children }) => (
 );
 
 const SocialBtn = ({ icon, color }) => (
-  <button className={`w-8 h-8 flex items-center justify-center rounded-lg border shadow-sm ${color}`}>
+  <button
+    className={`w-8 h-8 flex items-center justify-center rounded-lg border shadow-sm ${color}`}
+  >
     {icon}
   </button>
 );

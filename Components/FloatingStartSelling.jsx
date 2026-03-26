@@ -6,7 +6,7 @@ import Link from "next/link";
 import { useAuthGuard } from "../app/hooks/useAuthGuard";
 
 export default function FloatingStartSelling({
-  href = "/become-seller",
+  href = "/become-provider",
   mascotSrc = "https://cdn-icons-png.flaticon.com/512/6028/6028680.png",
   mascotAlt = "Mascot",
 }) {

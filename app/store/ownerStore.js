@@ -98,6 +98,7 @@ export const useOwnerStore = create((set, get) => ({
     }
   },
 
+
   updateOwner: async (id, data) => {
     set({ loading: true, error: null });
     try {
