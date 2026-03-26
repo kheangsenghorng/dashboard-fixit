@@ -1,37 +1,65 @@
 import api from "@/lib/api";
 
+const OWNER_BASE = "/owner";
+const OWNER_DOC_BASE = "/owner/document";
+
 export const ownerService = {
-  // Owners
-  getAll: (params) => api.get("/owners", { params }),
-  getByUserId: (userId) =>
-    api.get(`/owners`, {
+  /* =========================
+     Owners
+  ========================= */
+
+  getAll(params) {
+    return api.get("/owners", { params });
+  },
+
+  getByUserId(userId) {
+    return api.get("/owners", {
       params: { user_id: userId },
-    }),
-    
-  create: (data) => api.post("/owners", data),
+    });
+  },
 
-  update: (id, data) =>
-    api.post(`/owners/${id}`, data, {
-      headers: { Accept: "application/json" },
-    }),
+  create(data) {
+    return api.post(OWNER_BASE, data);
+  },
 
-  remove: (id) => api.delete(`/owners/${id}`),
+  update(id, data) {
+    return api.put(`/owners/${id}`, data);
+  },
 
-  // ✅ Owner Documents (Owner Only)
-  getDocuments: () => api.get(`/owner/owner-documents`),
+  remove(id) {
+    return api.delete(`/owners/${id}`);
+  },
 
-  getOneDocument: (id) => api.get(`/owner/owner-documents/${id}`),
+  /* =========================
+     Owner Documents
+  ========================= */
 
-  uploadDocument: (data) =>
-    api.post(`/owner/owner-documents`, data, {
-      headers: { Accept: "application/json" },
-    }),
+  getDocuments(params) {
+    return api.get(`${OWNER_BASE}/owner-documents`, { params });
+  },
 
-  filterStatus: (status) =>
-    api.get(`/owner/owner-documents`, { params: { status } }),
-  updateDocument: (id, data) =>
-    api.post(`/owner/owner-documents/${id}`, data, {
-      headers: { Accept: "application/json" },
-    }),
-  deleteDocument: (id) => api.delete(`/owner/owner-documents/${id}`),
+  getOneDocument(id) {
+    return api.get(`${OWNER_BASE}/owner-documents/${id}`);
+  },
+
+  uploadDocument(data) {
+    return api.post(`${OWNER_DOC_BASE}`, data, {
+      headers: {
+        "Content-Type": "multipart/form-data",
+      },
+    });
+  },
+  updateDocument(id, data) {
+    return api.put(`${OWNER_DOC_BASE}/${id}`, data);
+  },
+
+  deleteDocument(id) {
+    return api.delete(`${OWNER_DOC_BASE}/${id}`);
+  },
+
+  filterStatus(status) {
+    return api.get(`${OWNER_BASE}/owner-documents`, {
+      params: { status },
+    });
+  },
 };
