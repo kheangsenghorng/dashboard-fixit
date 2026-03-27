@@ -7,8 +7,7 @@ import Link from "next/link";
 // Stores & Hooks
 import { useCategoryStore } from "./store/useCategoryStore";
 import { useCategoryRealtime } from "./hooks/useCategoryRealtime";
-import { useTypeStore } from "./store/useTypeStore";
-import { useAuthGuard } from "./hooks/useAuthGuard";
+
 import { encodeId } from "./utils/hashids";
 // Components
 import NavbarFixit from "../Components/nabvar/Navbar";

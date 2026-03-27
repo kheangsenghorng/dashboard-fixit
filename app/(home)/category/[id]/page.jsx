@@ -24,17 +24,30 @@ import ServiceListener from "../../../../Components/realtime/ServiceListener";
 
 export default function CategoryPage() {
   const params = useParams();
-  const { fetchTypesCategory, activeTypes } = useTypeStore();
-  const { fetchServicesCategory, activeServices } = useServiceStore();
+
+  const { fetchTypesCategory, activeTypes, setActiveTypes } = useTypeStore();
+  const { fetchServicesCategory, activeServices, setActiveServices } =
+    useServiceStore();
 
   const encodedId = params.id;
-  const categoryId = decodeId(encodedId);
+  // ✅ Robust check
+  const categoryId = useMemo(() => {
+    const decoded = decodeId(encodedId);
+    // decodeId can return NaN, 0, null, or undefined — reject all
+    if (!decoded || isNaN(decoded) || decoded <= 0) return null;
+    return decoded;
+  }, [encodedId]);
 
   useEffect(() => {
     if (!categoryId) return;
+
+    // Clear stale data first
+    setActiveTypes([]); // add setActiveTypes from useTypeStore
+    setActiveServices([]); // add setActiveServices from useServiceStore
+
     fetchTypesCategory(categoryId);
     fetchServicesCategory(categoryId);
-  }, [categoryId, fetchTypesCategory, fetchServicesCategory]);
+  }, [categoryId]);
   const categoryName = useMemo(() => {
     return activeTypes?.[0]?.category?.name || "Services";
   }, [activeTypes]);

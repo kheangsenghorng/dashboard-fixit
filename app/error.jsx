@@ -55,16 +55,6 @@ export default function Error({ error }) {
             </button>
           </div>
         </div>
-
-        {/* Subtle Footer Information */}
-        <div className="mt-12 pt-8 border-t border-slate-100">
-          <div className="inline-flex items-center px-3 py-1 rounded-full bg-slate-100 text-slate-500">
-             <span className="w-2 h-2 bg-red-500 rounded-full animate-ping mr-2"></span>
-             <p className="text-[10px] font-bold uppercase tracking-widest">
-                Security Status: Unauthorized
-             </p>
-          </div>
-        </div>
       </div>
     </div>
   );
