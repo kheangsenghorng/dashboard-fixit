@@ -1,9 +1,8 @@
-
 "use client";
 
+import FloatingStartSelling from "../../Components/FloatingStartSelling";
 import Footer from "../../Components/nabvar/Footer";
 import Navbar from "../../Components/nabvar/Navbar";
-
 
 // import BecomeSellerButton from "@/components/ui/BecomeSellerButton";
 
@@ -17,7 +16,7 @@ export default function UserLayout({ children }) {
 
       {/* Page Content */}
       <main>{children}</main>
-
+      <FloatingStartSelling />
       <Footer />
       {/* <BecomeSellerButton /> */}
     </div>

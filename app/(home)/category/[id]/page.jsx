@@ -49,7 +49,7 @@ export default function CategoryPage() {
     return typeCategory?.[0]?.category?.name || "Services";
   }, [typeCategory]);
 
-  console.log(typeCategory);
+
 
   return (
     <div className="min-h-screen bg-[#F8F9FA]">
