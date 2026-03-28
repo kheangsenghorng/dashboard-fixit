@@ -48,11 +48,20 @@ export default function BecomeCompanyForm() {
       router.push("/auth/login");
       return;
     }
-    if (authUser.role !== "customer") {
-      router.push("/dashboard");
-      return;
+
+    if (authUser.role === "admin") {
+      router.push("/admin/dashboard");
+    } else if (authUser.role === "owner") {
+      router.push("/owner/dashboard");
+    } else {
+      router.push("/dashboard"); // customer or others
     }
-    setFormData((prev) => ({ ...prev, userId: authUser.id || "" }));
+
+    // default = customer
+    setFormData((prev) => ({
+      ...prev,
+      userId: authUser.id || "",
+    }));
   }, [authUser, router]);
 
   const handleChange = (e) => {

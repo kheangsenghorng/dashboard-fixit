@@ -56,7 +56,7 @@ export default function NavbarFixit() {
       case "owner":
         return "/owner/dashboard";
       case "customer":
-        return "/customer";
+        return "/my-profile";
       default:
         return "/";
     }
@@ -407,7 +407,7 @@ export default function NavbarFixit() {
                   </div>
                   <Link href={getDashboardRoute()}>
                     <button className="bg-slate-900 text-white px-5 py-2.5 rounded-xl text-xs font-black uppercase tracking-widest hover:bg-blue-600 transition active:scale-95 shadow-lg shadow-slate-200">
-                      My Account
+                      My Profile
                     </button>
                   </Link>
                   {/* ✅ Logout button */}

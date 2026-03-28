@@ -11,7 +11,7 @@ export function useAuthHandler() {
 
   const loginAction = useAuthStore((s) => s.login);
   const setOtpContext = useAuthStore((s) => s.setOtpContext);
-  const setError = useAuthStore((s) => s.setError); // surface errors in UI, not alert()
+  const setError = useAuthStore((s) => s.setError);
   const loading = useAuthStore((s) => s.loading);
 
   const [login, setLogin] = useState("");
@@ -29,13 +29,13 @@ export function useAuthHandler() {
       setOtpContext({
         login: data.login ?? login,
         channel: data.channel ?? "phone",
-        redirect: customRedirect ?? redirect ?? null,
+        redirect: customRedirect ?? redirect ?? "/",
       });
 
       router.replace("/auth/verify-otp");
       return data;
     } catch {
-      // error is already written to the store by loginAction — nothing extra needed
+      return null;
     }
   };
 
