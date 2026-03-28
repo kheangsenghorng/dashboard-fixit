@@ -25,9 +25,8 @@ import { useOwnerStore } from "../../../app/store/ownerStore";
 import ContentLoader from "../../ContentLoader";
 import { formatPhoneNumber } from "../../../app/utils/phoneUtils";
 import OwnerFilterSystem from "./OwnerFilterSystem";
-import SearchCompany from "./SecrchCompany";
-import LastDaysOptions from "./LastDaysOptions";
 import { encodeId } from "../../../app/utils/hashids";
+import OwnerListener from "../../realtime/OwnerListener";
 
 export default function OwnersPage() {
   const { user: authUser } = useAuthGuard();
@@ -45,9 +44,8 @@ export default function OwnersPage() {
   const [deleteOpen, setDeleteOpen] = useState(false);
   const [idsToDelete, setIdsToDelete] = useState([]);
   const [deleting, setDeleting] = useState(false);
-
   const [search, setSearch] = useState("");
-  const [status, setStatus] = useState(""); // "completed" | "pending" | ""
+  const [status, setStatus] = useState("");
   const [isFirstLoad, setIsFirstLoad] = useState(true);
   const [filtersOpen, setFiltersOpen] = useState(false);
 
@@ -63,11 +61,10 @@ export default function OwnersPage() {
     this_month: false,
   });
 
-  // ✅ Calculate active filters count
   const activeFilterCount = useMemo(() => {
     let count = 0;
     if (status) count++;
-    Object.entries(filters).forEach(([key, value]) => {
+    Object.entries(filters).forEach(([, value]) => {
       if (value && value !== false) count++;
     });
     return count;
@@ -86,18 +83,10 @@ export default function OwnersPage() {
     };
   }, [owners, meta]);
 
-  // ✅ Unified param builder
   const buildParams = useCallback(
     (overrides = {}) => {
-      const p = {
-        page: 1,
-        search,
-        status,
-        ...filters,
-        ...overrides,
-      };
+      const p = { page: 1, search, status, ...filters, ...overrides };
 
-      // Clean up empty values
       Object.keys(p).forEach((key) => {
         if (p[key] === "" || p[key] === null || p[key] === false) {
           delete p[key];
@@ -110,14 +99,13 @@ export default function OwnersPage() {
     [search, status, filters]
   );
 
-  // ✅ Initial fetch
   useEffect(() => {
     const initFetch = async () => {
       await fetchOwners(buildParams({ page: 1 }));
       setIsFirstLoad(false);
     };
     if (authUser) initFetch();
-  }, [fetchOwners, authUser]); // Removed buildParams from deps to avoid loop
+  }, [fetchOwners, authUser]);
 
   const ownersUsers = owners
     .filter((o) => o.user)
@@ -125,7 +113,7 @@ export default function OwnersPage() {
       id: o.user.id,
       name: o.user.name,
       email: o.user.email,
-      business_name: o.business_name, // ✅ keep business name
+      business_name: o.business_name,
     }));
 
   const handleSearch = (value) => {
@@ -196,6 +184,7 @@ export default function OwnersPage() {
 
   return (
     <div className="relative min-h-[calc(100vh-4rem)] bg-[#F8FAFC] p-4 lg:p-8 space-y-8 font-sans antialiased text-slate-900">
+      <OwnerListener />
       {isFirstLoad && (
         <div className="absolute inset-0 z-[100] flex items-center justify-center bg-[#F8FAFC]">
           <ContentLoader
@@ -300,11 +289,11 @@ export default function OwnersPage() {
           actions: { apply: applyFilters, reset: resetFilters },
           loading,
           activeCount: activeFilterCount,
-          ownersUsers: ownersUsers,
+          ownersUsers,
         }}
       />
 
-      {/* TABLE - CONDENSED VERSION */}
+      {/* TABLE */}
       <div className="max-w-7xl mx-auto relative">
         <div
           className={`bg-white border border-slate-200 rounded-2xl overflow-hidden shadow-sm transition-opacity duration-300 ${
@@ -342,12 +331,10 @@ export default function OwnersPage() {
                     key={item.id}
                     className="hover:bg-indigo-50/20 transition-colors group"
                   >
-                    {/* CP NO */}
                     <td className="px-4 py-2.5 font-mono text-[11px] text-slate-400">
                       #{String(index + 1).padStart(3, "0")}
                     </td>
 
-                    {/* BUSINESS & OWNER */}
                     <td className="px-4 py-2.5">
                       <div className="flex items-center gap-3">
                         <div className="relative w-8 h-8 rounded-lg overflow-hidden bg-slate-100 border border-slate-200 flex-shrink-0">
@@ -376,7 +363,6 @@ export default function OwnersPage() {
                       </div>
                     </td>
 
-                    {/* CONTACT */}
                     <td className="px-4 py-2.5">
                       <div className="flex flex-col gap-0.5">
                         <div className="flex items-center gap-1.5 text-slate-500 text-[10px]">
@@ -390,7 +376,6 @@ export default function OwnersPage() {
                       </div>
                     </td>
 
-                    {/* LOCATION */}
                     <td className="px-4 py-2.5">
                       <div className="flex items-center gap-1 text-slate-500 text-[10px]">
                         <MapPin
@@ -403,12 +388,10 @@ export default function OwnersPage() {
                       </div>
                     </td>
 
-                    {/* STATUS */}
                     <td className="px-4 py-2.5 text-center">
-                      <StatusBadge status={item.status} isSmall={true} />
+                      <StatusBadge status={item.status} />
                     </td>
 
-                    {/* ACTIONS */}
                     <td className="px-6 py-2.5 text-right">
                       <div className="flex justify-end gap-1 md:opacity-0 group-hover:opacity-100 transition-all">
                         <button
@@ -460,11 +443,22 @@ export default function OwnersPage() {
                     </td>
                   </tr>
                 ))}
+
+                {!loading && owners.length === 0 && (
+                  <tr>
+                    <td
+                      colSpan={6}
+                      className="px-4 py-16 text-center text-slate-400 text-sm font-medium"
+                    >
+                      No companies found.
+                    </td>
+                  </tr>
+                )}
               </tbody>
             </table>
           </div>
 
-          {/* COMPACT PAGINATION */}
+          {/* PAGINATION */}
           <div className="px-6 py-3 bg-slate-50/50 border-t border-slate-100 flex items-center justify-between">
             <p className="text-[9px] font-black text-slate-400 uppercase tracking-widest">
               Total: <span className="text-slate-900">{meta?.total || 0}</span>
@@ -494,6 +488,7 @@ export default function OwnersPage() {
           </div>
         </div>
       </div>
+
       <DeleteConfirmModal
         isOpen={deleteOpen}
         onClose={() => setDeleteOpen(false)}
@@ -524,8 +519,6 @@ function StatusBadge({ status }) {
       wrap: "bg-rose-50 text-rose-700 border-rose-100",
       dot: "bg-rose-500",
     },
-
-    // Optional: if your DB still uses "completed"
     completed: {
       label: "Completed",
       wrap: "bg-emerald-50 text-emerald-700 border-emerald-100",

@@ -6,20 +6,14 @@ import {
   Search,
   Trash2,
   Pencil,
-  Layers,
   ChevronRight,
   ChevronLeft,
   X,
-  ShieldCheck,
   ShieldAlert,
   ImageIcon,
   CheckCircle2,
   Clock,
-  DollarSign,
-  Store,
-  Tag,
   Briefcase,
-  Loader2,
   PauseCircle,
 } from "lucide-react";
 import { useRouter } from "next/navigation";
@@ -108,19 +102,13 @@ export default function CompactServicesPage() {
   // --- Deriving Dropdown Options from Data ---
   const dropDownData = useMemo(() => {
     const cats = new Map();
-    const typs = new Map();
-    const ownrs = new Map();
 
     services.forEach((s) => {
       if (s.category) cats.set(s.category.id, s.category);
-      if (s.type) typs.set(s.type.id, s.type);
-      if (s.owner) ownrs.set(s.owner.id, s.owner);
     });
 
     return {
       categories: Array.from(cats.values()),
-      types: Array.from(typs.values()),
-      owners: Array.from(ownrs.values()),
     };
   }, [services]);
 
@@ -141,8 +129,12 @@ export default function CompactServicesPage() {
   };
 
   const handleFilterChange = (key, value) => {
-    setFilters((prev) => ({ ...prev, [key]: value }));
-    setSelectedSet(new Set()); // Reset selection when filters change
+    setFilters((prev) => ({
+      ...prev,
+      [key]: value === "all" ? "" : value,
+    }));
+
+    setSelectedSet(new Set());
   };
 
   const handleBulkStatusUpdate = async (status) => {
@@ -299,17 +291,19 @@ export default function CompactServicesPage() {
         {/* Category Select */}
         <div className="relative">
           <select
-            value={filters.category_id}
+            defaultValue="all"
             onChange={(e) => handleFilterChange("category_id", e.target.value)}
             className="appearance-none w-full px-5 py-4 bg-white border border-slate-200 rounded-2xl text-xs font-bold outline-none cursor-pointer"
           >
-            <option value="">CATEGORY: ALL</option>
+            <option value="all">CATEGORY: ALL</option>
+
             {dropDownData.categories.map((c) => (
               <option key={c.id} value={c.id}>
                 {c.name.toUpperCase()}
               </option>
             ))}
           </select>
+
           <ChevronRight
             size={14}
             className="absolute right-4 top-1/2 -translate-y-1/2 rotate-90 text-slate-300 pointer-events-none"

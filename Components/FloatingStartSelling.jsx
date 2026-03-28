@@ -12,6 +12,8 @@ export default function FloatingStartSelling({
 }) {
   const { user: authUser, initialized } = useAuthGuard();
 
+  if (!authUser) return;
+
   return (
     <div className="fixed bottom-10 right-10 flex flex-col items-end z-[90]">
       {/* Mascot */}

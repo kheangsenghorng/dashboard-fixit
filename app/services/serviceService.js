@@ -16,7 +16,9 @@ export const serviceService = {
   // Create service
   create: (data) =>
     api.post("/services", data, {
-      headers: { Accept: "application/json" },
+      headers: {
+        "Content-Type": "multipart/form-data",
+      },
     }),
 
   // Update service

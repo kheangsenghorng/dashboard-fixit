@@ -33,6 +33,7 @@ import { useAuthGuard } from "@/app/hooks/useAuthGuard";
 import { decodeId } from "../../../../app/utils/hashids";
 import Image from "next/image";
 
+
 // Mock Services Data (Can be replaced with owner.services if available in your API)
 const initialServices = [
   {
@@ -68,7 +69,6 @@ export default function PremiumOwnerDashboard() {
   const { id: encodedId } = useParams();
   const id = decodeId(encodedId);
 
-  
   const { user, initialized } = useAuthGuard();
 
   const { fetchOwner, owner, loading, updateOwner } = useOwnerStore();
@@ -109,6 +109,7 @@ export default function PremiumOwnerDashboard() {
 
   return (
     <div className="min-h-screen bg-[#f5f5f7] p-4 md:p-10 pb-20">
+     
       <div className="max-w-7xl mx-auto space-y-8">
         {/* ================= HEADER SECTION ================= */}
         <motion.div

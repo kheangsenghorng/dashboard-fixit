@@ -51,19 +51,19 @@ export default function BecomeCompanyForm() {
 
     if (authUser.role === "admin") {
       router.push("/admin/dashboard");
-    } else if (authUser.role === "owner") {
-      router.push("/owner/dashboard");
-    } else {
-      router.push("/dashboard"); // customer or others
+      return;
     }
 
-    // default = customer
+    if (authUser.role === "owner") {
+      router.push("/owner/dashboard");
+      return;
+    }
+
     setFormData((prev) => ({
       ...prev,
       userId: authUser.id || "",
     }));
   }, [authUser, router]);
-
   const handleChange = (e) => {
     const { name, value, type, checked } = e.target;
     setFormData((prev) => ({
@@ -133,6 +133,12 @@ export default function BecomeCompanyForm() {
         setLocalError("You must accept the Privacy Policy to proceed.");
         return;
       }
+
+      if (!formData.document) {
+        setLocalError("You must accept document");
+        return;
+      }
+
       if (!authUser || authUser.role !== "customer") return;
 
       const payload = new FormData();
