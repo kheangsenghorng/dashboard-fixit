@@ -27,10 +27,10 @@ export const useServiceStore = create((set, get) => ({
   addService: (newService) =>
     set((state) => {
       const existsInServices = state.services.some(
-        (s) => s.id === newService.id,
+        (s) => s.id === newService.id
       );
       const existsInActive = state.activeServices.some(
-        (s) => s.id === newService.id,
+        (s) => s.id === newService.id
       );
 
       return {
@@ -49,16 +49,16 @@ export const useServiceStore = create((set, get) => ({
   replaceService: (updatedService) =>
     set((state) => {
       const existsInServices = state.services.some(
-        (s) => s.id === updatedService.id,
+        (s) => s.id === updatedService.id
       );
       const existsInActive = state.activeServices.some(
-        (s) => s.id === updatedService.id,
+        (s) => s.id === updatedService.id
       );
 
       return {
         services: existsInServices
           ? state.services.map((s) =>
-              s.id === updatedService.id ? updatedService : s,
+              s.id === updatedService.id ? updatedService : s
             )
           : [updatedService, ...state.services],
 
@@ -66,7 +66,7 @@ export const useServiceStore = create((set, get) => ({
           updatedService.status === "active"
             ? existsInActive
               ? state.activeServices.map((s) =>
-                  s.id === updatedService.id ? updatedService : s,
+                  s.id === updatedService.id ? updatedService : s
                 )
               : [updatedService, ...state.activeServices]
             : state.activeServices.filter((s) => s.id !== updatedService.id),
@@ -220,7 +220,7 @@ export const useServiceStore = create((set, get) => ({
 
       set((state) => ({
         services: state.services.map((s) =>
-          ids.includes(s.id) ? { ...s, status } : s,
+          ids.includes(s.id) ? { ...s, status } : s
         ),
         activeServices:
           status === "active"
@@ -262,7 +262,6 @@ export const useServiceStore = create((set, get) => ({
   fetchServicesType: async (typeId) => {
     try {
       const res = await serviceService.getServicesByType(typeId);
-      console.log(res);
 
       set({
         activeServices: res?.data?.data || [],

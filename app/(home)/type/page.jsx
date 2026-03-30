@@ -4,11 +4,7 @@ import React, { useEffect } from "react";
 import Link from "next/link";
 import { useTypeStore } from "../../store/useTypeStore";
 import TypeListener from "../../../Components/realtime/TypeListener";
-
-// Helper to handle the encoding you mentioned in your snippet
-const encodeId = (id) => {
-  return btoa(id.toString()); // Simple base64 encoding example
-};
+import { encodeId } from "../../utils/hashids";
 
 export default function TypesPage() {
   const { fatchTypeAction, activeTypes } = useTypeStore();

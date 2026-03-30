@@ -26,7 +26,7 @@ import ContentLoader from "../../ContentLoader";
 import { formatPhoneNumber } from "../../../app/utils/phoneUtils";
 import OwnerFilterSystem from "./OwnerFilterSystem";
 import { encodeId } from "../../../app/utils/hashids";
-import OwnerListener from "../../realtime/OwnerListener";
+import PublicOwnerCreatedListener from "../../realtime/PublicOwnerCreatedListener";
 
 export default function OwnersPage() {
   const { user: authUser } = useAuthGuard();
@@ -184,7 +184,8 @@ export default function OwnersPage() {
 
   return (
     <div className="relative min-h-[calc(100vh-4rem)] bg-[#F8FAFC] p-4 lg:p-8 space-y-8 font-sans antialiased text-slate-900">
-      <OwnerListener />
+      {/* <OwnerListener /> */}
+      <PublicOwnerCreatedListener />
       {isFirstLoad && (
         <div className="absolute inset-0 z-[100] flex items-center justify-center bg-[#F8FAFC]">
           <ContentLoader

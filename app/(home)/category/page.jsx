@@ -6,17 +6,18 @@ import { Search, Box, Filter, ShoppingBag, Layers } from "lucide-react";
 
 import { useTypeStore } from "../../store/useTypeStore";
 import TypeListener from "../../../Components/realtime/TypeListener";
-
-const encodeId = (id) => btoa(id.toString());
+import { encodeId } from "../../utils/hashids";
 
 export default function Category() {
-  const { fatchTypeAction, activeTypes } = useTypeStore();
+  const { fetchTypeAction, activeTypes } = useTypeStore();
   const [selectedCategory, setSelectedCategory] = useState("all");
   const [searchQuery, setSearchQuery] = useState("");
 
   useEffect(() => {
-    fatchTypeAction();
-  }, [fatchTypeAction]);
+    fetchTypeAction?.();
+  }, [fetchTypeAction]);
+
+  console.log(activeTypes);
 
   // API response: { data: [...], links: {...}, meta: {...} }
   const types = activeTypes || [];

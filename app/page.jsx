@@ -18,6 +18,8 @@ import FloatingStartSelling from "../Components/FloatingStartSelling";
 const FixitLandingPage = () => {
   const { categories, isLoading, error } = useCategoryStore();
 
+  useCategoryRealtime();
+
   return (
     <>
       <TypeListener />
