@@ -14,7 +14,6 @@ function getEcho() {
 
   const token = getToken();
   if (!token) {
-    console.warn("No auth token found");
     return null;
   }
 

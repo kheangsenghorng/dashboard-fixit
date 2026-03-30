@@ -4,17 +4,14 @@ import { typesService } from "../services/typesService";
 export const useTypeStore = create((set, get) => ({
   types: [],
   activeTypes: [],
-  typeCategory: [], // ✅ separate state for category-scoped types
+  typeCategory: [],
   type: null,
   meta: null,
   loading: false,
 
   // local setters for realtime
   setTypes: (types, meta = null) => set({ types, meta }),
-
   setActiveTypes: (activeTypes) => set({ activeTypes }),
-
-  // ✅ NEW: setter for category-scoped types (used by realtime listeners)
   setTypeCategory: (typeCategory) => set({ typeCategory }),
 
   addType: (newType) =>
@@ -33,7 +30,6 @@ export const useTypeStore = create((set, get) => ({
               ? state.activeTypes
               : [newType, ...state.activeTypes]
             : state.activeTypes,
-        // ✅ only add to typeCategory if it belongs to the same category
         typeCategory:
           newType.status === "active" && !existsInCategory
             ? [newType, ...state.typeCategory]
@@ -65,7 +61,6 @@ export const useTypeStore = create((set, get) => ({
               : [updatedType, ...state.activeTypes]
             : state.activeTypes.filter((t) => t.id !== updatedType.id),
 
-        // ✅ update typeCategory independently — no global reset
         typeCategory:
           updatedType.status === "active"
             ? existsInCategory
@@ -83,7 +78,7 @@ export const useTypeStore = create((set, get) => ({
     set((state) => ({
       types: state.types.filter((t) => t.id !== id),
       activeTypes: state.activeTypes.filter((t) => t.id !== id),
-      typeCategory: state.typeCategory.filter((t) => t.id !== id), // ✅
+      typeCategory: state.typeCategory.filter((t) => t.id !== id),
       type: state.type?.id === id ? null : state.type,
     })),
 
@@ -100,6 +95,7 @@ export const useTypeStore = create((set, get) => ({
     } catch (error) {
       console.error("Fetch types error:", error);
       set({ loading: false });
+      // ✅ Don't wipe types on error
     }
   },
 
@@ -110,14 +106,23 @@ export const useTypeStore = create((set, get) => ({
       set({ activeTypes: res.data.data });
     } catch (error) {
       console.error("Fetch active types error:", error);
+      // ✅ Don't wipe activeTypes on error
     }
   },
 
   // Fetch action publish types
-  fatchTypeAction: async () => {
+  fetchTypeAction: async () => {
     try {
       const res = await typesService.getTypeAction();
-      set({ activeTypes: res?.data?.data || [] });
+      const data = res?.data?.data;
+
+      // ✅ Only update if we actually got an array back — never wipe on bad response
+      if (Array.isArray(data)) {
+        set({ activeTypes: data });
+      } else {
+        console.warn("fetchTypeAction: unexpected response shape", res?.data);
+        // ✅ Do NOT set activeTypes: [] here — keep existing data intact
+      }
     } catch (error) {
       console.error("Fetch action public types error:", {
         message: error?.message,
@@ -125,12 +130,12 @@ export const useTypeStore = create((set, get) => ({
         data: error?.response?.data,
         url: error?.config?.url,
       });
-      set({ activeTypes: [] });
+      // ✅ FIXED: Don't wipe activeTypes on error — keep existing data
+      // set({ activeTypes: [] }); ← this was the bug
     }
   },
 
-  // ✅ FIXED: Fetch by category — now uses typeCategory instead of activeTypes
-  // This prevents the realtime listener from wiping activeTypes globally
+  // Fetch by category — uses typeCategory, NOT activeTypes (isolated)
   fetchTypesCategory: async (categoryId) => {
     if (!categoryId) {
       set({ typeCategory: [] });
@@ -140,11 +145,12 @@ export const useTypeStore = create((set, get) => ({
     try {
       const res = await typesService.getTypesByCategory(categoryId);
       set({
-        typeCategory: res?.data?.data || [], // ✅ isolated — won't affect activeTypes
+        typeCategory: res?.data?.data || [],
       });
     } catch (error) {
       console.error("Fetch types by category error:", error);
       set({ typeCategory: [] });
+      // ✅ typeCategory failing is fine — it doesn't touch activeTypes
     }
   },
 
@@ -204,7 +210,7 @@ export const useTypeStore = create((set, get) => ({
       set((state) => ({
         types: state.types.filter((t) => !ids.includes(t.id)),
         activeTypes: state.activeTypes.filter((t) => !ids.includes(t.id)),
-        typeCategory: state.typeCategory.filter((t) => !ids.includes(t.id)), // ✅
+        typeCategory: state.typeCategory.filter((t) => !ids.includes(t.id)),
         type: ids.includes(state.type?.id) ? null : state.type,
       }));
     } catch (error) {
@@ -228,7 +234,7 @@ export const useTypeStore = create((set, get) => ({
         typeCategory:
           status === "active"
             ? state.typeCategory
-            : state.typeCategory.filter((t) => !ids.includes(t.id)), // ✅
+            : state.typeCategory.filter((t) => !ids.includes(t.id)),
         type:
           state.type && ids.includes(state.type.id)
             ? { ...state.type, status }
