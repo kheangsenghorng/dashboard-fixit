@@ -7,6 +7,8 @@ export const typesService = {
   // Get active types
   getActive: () => api.get("/types/active"),
 
+  getStats:() => api.get("/types/stats"),
+
   // Get one type
   getOne: (id) => api.get(`/types/${id}`),
 

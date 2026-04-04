@@ -39,6 +39,20 @@ export const useDocumentStore = create((set) => ({
       throw error;
     }
   },
+  // Send notify missing documents email
+  sendMissingDocumentEmail: async (payload) => {
+    set({ emailLoading: true });
+
+    try {
+      const { data } = await documentService.sendEmail(payload);
+      return data;
+    } catch (error) {
+      console.error("Send missing document email error:", error);
+      throw error;
+    } finally {
+      set({ emailLoading: false });
+    }
+  },
 
   sendOtp: async (id) => {
     const { data } = await documentService.sendOtp(id);

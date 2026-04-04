@@ -10,7 +10,7 @@ export default function TypesPage() {
   const { fatchTypeAction, activeTypes } = useTypeStore();
 
   useEffect(() => {
-    fatchTypeAction();
+    fatchTypeAction?.();
   }, [fatchTypeAction]);
 
   return (

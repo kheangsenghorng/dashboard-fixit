@@ -9,6 +9,8 @@ export const useCategoryStore = create((set, get) => ({
   meta: null,
   isLoading: false,
   error: null,
+  stats: null,
+  isStatsLoading: false,
 
   // FETCH ALL
   fetchCategories: async (params = {}) => {
@@ -258,6 +260,31 @@ export const useCategoryStore = create((set, get) => ({
       throw error;
     }
   },
+  // FETCH CATEGORY STATS
+fetchCategoryStats: async () => {
+  set({ isStatsLoading: true, error: null });
+
+  try {
+    const res = await categoryService.getStats();
+
+    set({
+      stats: res?.data?.data ?? null,
+      isStatsLoading: false,
+    });
+
+    return res?.data?.data;
+  } catch (error) {
+    set({
+      error:
+        error?.response?.data?.message ||
+        error?.message ||
+        "Failed to fetch category statistics",
+      isStatsLoading: false,
+    });
+
+    throw error;
+  }
+},
 
   // REALTIME — unchanged
   applyCategoryChange: ({ action, category }) =>

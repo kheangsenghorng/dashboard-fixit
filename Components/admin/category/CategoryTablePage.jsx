@@ -41,6 +41,9 @@ export default function CompactServiceCategoriesPage() {
     isLoading,
     deleteMany,
     updateManyStatus,
+    fetchCategoryStats,
+    stats: categoriesStats,
+    isStatsLoading,
   } = useCategoryStore();
 
   const [selectedSet, setSelectedSet] = useState(new Set());
@@ -65,6 +68,10 @@ export default function CompactServiceCategoriesPage() {
     if (activeStatus !== "all") params.status = activeStatus;
     await fetchCategories(params);
   };
+
+  useEffect(() => {
+    fetchCategoryStats();
+  }, []);
 
   // 1. AUTO-SEARCH LOGIC (Debounce)
   // This effect runs whenever search, status, or date changes
@@ -132,7 +139,7 @@ export default function CompactServiceCategoriesPage() {
       {
         id: "all",
         label: "Total",
-        value: meta?.total || 0,
+        value: categoriesStats?.total_categories || 0,
         icon: Layers,
         color: "text-indigo-600",
         bg: "bg-indigo-50",
@@ -140,7 +147,7 @@ export default function CompactServiceCategoriesPage() {
       {
         id: "active",
         label: "Active",
-        value: categories.filter((c) => c.status === "active").length,
+        value: categoriesStats?.active_categories || 0,
         icon: CheckCircle2,
         color: "text-emerald-600",
         bg: "bg-emerald-50",
@@ -148,13 +155,13 @@ export default function CompactServiceCategoriesPage() {
       {
         id: "inactive",
         label: "Hidden",
-        value: categories.filter((c) => c.status === "inactive").length,
+        value: categoriesStats?.inactive_categories || 0,
         icon: ShieldAlert,
         color: "text-rose-600",
         bg: "bg-rose-50",
       },
     ],
-    [categories, meta]
+    [categoriesStats]
   );
 
   if (!authUser) return null;
@@ -191,29 +198,44 @@ export default function CompactServiceCategoriesPage() {
 
       {/* STATS CARDS */}
       <div className="max-w-7xl mx-auto grid grid-cols-1 md:grid-cols-3 gap-4">
-        {stats.map((stat) => (
-          <button
-            key={stat.id}
-            onClick={() => setActiveStatus(stat.id)}
-            className={`flex items-center gap-4 bg-white p-4 rounded-2xl border transition-all ${
-              activeStatus === stat.id
-                ? "border-indigo-500 ring-2 ring-indigo-50"
-                : "border-slate-100 shadow-sm"
-            }`}
-          >
-            <div
-              className={`w-10 h-10 ${stat.bg} ${stat.color} rounded-xl flex items-center justify-center`}
-            >
-              <stat.icon size={20} />
-            </div>
-            <div>
-              <p className="text-[9px] font-black uppercase tracking-widest text-slate-400">
-                {stat.label}
-              </p>
-              <h3 className="text-xl font-black">{stat.value}</h3>
-            </div>
-          </button>
-        ))}
+        {isStatsLoading
+          ? Array.from({ length: 3 }).map((_, index) => (
+              <div
+                key={index}
+                className="bg-white p-4 rounded-2xl border border-slate-100 animate-pulse"
+              >
+                <div className="flex items-center gap-4">
+                  <div className="w-10 h-10 rounded-xl bg-slate-100" />
+                  <div className="space-y-2">
+                    <div className="w-16 h-2 rounded bg-slate-100" />
+                    <div className="w-10 h-5 rounded bg-slate-200" />
+                  </div>
+                </div>
+              </div>
+            ))
+          : stats.map((stat) => (
+              <button
+                key={stat.id}
+                onClick={() => setActiveStatus(stat.id)}
+                className={`flex items-center gap-4 bg-white p-4 rounded-2xl border transition-all ${
+                  activeStatus === stat.id
+                    ? "border-indigo-500 ring-2 ring-indigo-50"
+                    : "border-slate-100 shadow-sm"
+                }`}
+              >
+                <div
+                  className={`w-10 h-10 ${stat.bg} ${stat.color} rounded-xl flex items-center justify-center`}
+                >
+                  <stat.icon size={20} />
+                </div>
+                <div>
+                  <p className="text-[9px] font-black uppercase tracking-widest text-slate-400">
+                    {stat.label}
+                  </p>
+                  <h3 className="text-xl font-black">{stat.value}</h3>
+                </div>
+              </button>
+            ))}
       </div>
 
       {/* SEARCH + FILTERS (AUTOMATIC NO ENTER NEEDED) */}

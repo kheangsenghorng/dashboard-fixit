@@ -7,6 +7,9 @@ export const categoryService = {
   // Get single category
   getOne: (id) => api.get(`/categories/${id}`),
 
+  //Get category statistics.
+  getStats:() => api.get("/categories/stats"),
+
   // Create category
   create: (data) =>
     api.post("/categories", data, {
