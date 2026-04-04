@@ -41,6 +41,9 @@ export default function TypeTablePage() {
     fetchTypes,
     deleteManyTypes,
     updateManyStatus,
+    fetchTypeStats,
+    statsLoading,
+    stats: typesStats,
   } = useTypeStore();
 
   // Category Store for Filter
@@ -60,6 +63,10 @@ export default function TypeTablePage() {
   useEffect(() => {
     fetchCategories({ all: true });
   }, [fetchCategories]);
+
+  useEffect(() => {
+    fetchTypeStats();
+  }, [fetchTypeStats]);
 
   // Helper to fetch data
   const refreshData = async (overrides = {}) => {
@@ -136,7 +143,7 @@ export default function TypeTablePage() {
       {
         id: "all",
         label: "Total Types",
-        value: meta?.total || 0,
+        value: typesStats?.total_types || 0,
         icon: Shapes,
         color: "text-indigo-600",
         bg: "bg-indigo-50",
@@ -144,7 +151,7 @@ export default function TypeTablePage() {
       {
         id: "active",
         label: "Active",
-        value: types.filter((t) => t.status === "active").length,
+        value: typesStats?.active_types || 0,
         icon: CheckCircle2,
         color: "text-emerald-600",
         bg: "bg-emerald-50",
@@ -152,13 +159,13 @@ export default function TypeTablePage() {
       {
         id: "inactive",
         label: "Hidden",
-        value: types.filter((t) => t.status === "inactive").length,
+        value: typesStats?.inactive_types || 0,
         icon: ShieldAlert,
         color: "text-rose-600",
         bg: "bg-rose-50",
       },
     ],
-    [types, meta]
+    [typesStats]
   );
 
   if (!authUser) return null;
@@ -198,29 +205,44 @@ export default function TypeTablePage() {
 
       {/* STATS */}
       <div className="max-w-7xl mx-auto grid grid-cols-1 md:grid-cols-3 gap-4">
-        {stats.map((stat) => (
-          <button
-            key={stat.id}
-            onClick={() => setActiveStatus(stat.id)}
-            className={`flex items-center gap-4 bg-white p-4 rounded-2xl border transition-all ${
-              activeStatus === stat.id
-                ? "border-indigo-500 ring-4 ring-indigo-500/5 shadow-sm"
-                : "border-slate-100 hover:border-slate-200"
-            }`}
-          >
-            <div
-              className={`w-12 h-12 ${stat.bg} ${stat.color} rounded-xl flex items-center justify-center`}
-            >
-              <stat.icon size={24} />
-            </div>
-            <div className="text-left">
-              <p className="text-[9px] font-black uppercase tracking-widest text-slate-400">
-                {stat.label}
-              </p>
-              <h3 className="text-2xl font-black">{stat.value}</h3>
-            </div>
-          </button>
-        ))}
+        {statsLoading
+          ? Array.from({ length: 3 }).map((_, index) => (
+              <div
+                key={index}
+                className="bg-white p-4 rounded-2xl border border-slate-100 animate-pulse"
+              >
+                <div className="flex items-center gap-4">
+                  <div className="w-12 h-12 rounded-xl bg-slate-100" />
+                  <div className="space-y-2">
+                    <div className="w-20 h-2 rounded bg-slate-100" />
+                    <div className="w-12 h-6 rounded bg-slate-200" />
+                  </div>
+                </div>
+              </div>
+            ))
+          : stats.map((stat) => (
+              <button
+                key={stat.id}
+                onClick={() => setActiveStatus(stat.id)}
+                className={`flex items-center gap-4 bg-white p-4 rounded-2xl border transition-all ${
+                  activeStatus === stat.id
+                    ? "border-indigo-500 ring-4 ring-indigo-500/5 shadow-sm"
+                    : "border-slate-100 hover:border-slate-200"
+                }`}
+              >
+                <div
+                  className={`w-12 h-12 ${stat.bg} ${stat.color} rounded-xl flex items-center justify-center`}
+                >
+                  <stat.icon size={24} />
+                </div>
+                <div className="text-left">
+                  <p className="text-[9px] font-black uppercase tracking-widest text-slate-400">
+                    {stat.label}
+                  </p>
+                  <h3 className="text-2xl font-black">{stat.value}</h3>
+                </div>
+              </button>
+            ))}
       </div>
 
       {/* SEARCH & FILTERS BAR */}
@@ -383,7 +405,9 @@ export default function TypeTablePage() {
                       <div className="flex justify-end gap-2 opacity-0 group-hover:opacity-100 transition-all translate-x-2 group-hover:translate-x-0">
                         <button
                           onClick={() =>
-                            router.push(`/admin/edit/types/${encodeId(item.id)}`)
+                            router.push(
+                              `/admin/edit/types/${encodeId(item.id)}`
+                            )
                           }
                           className="p-2 text-slate-400 hover:text-indigo-600 hover:bg-indigo-50 rounded-xl transition-all"
                         >

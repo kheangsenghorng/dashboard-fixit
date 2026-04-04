@@ -14,6 +14,9 @@ export const documentService = {
   verifyOtp: (id, otp) =>
     api.post(`/owner-documents/${id}/verify-otp`, { otp }),
 
+  // Send notify missing documents email
+  sendEmail: (data) => api.post("/owner-documents/notify-missing", data),
+
   filterByOwner: (ownerId) =>
     api.get(`/owner-documents`, { params: { owner_id: ownerId } }),
 

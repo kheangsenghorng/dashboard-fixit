@@ -8,6 +8,8 @@ export const useTypeStore = create((set, get) => ({
   type: null,
   meta: null,
   loading: false,
+  stats: null,
+  statsLoading: false,
 
   // local setters for realtime
   setTypes: (types, meta = null) => set({ types, meta }),
@@ -242,6 +244,29 @@ export const useTypeStore = create((set, get) => ({
       }));
     } catch (error) {
       console.error("Bulk status update error:", error);
+      throw error;
+    }
+  },
+  // Fetch type statistics
+  fetchTypeStats: async () => {
+    set({ statsLoading: true });
+
+    try {
+      const res = await typesService.getStats();
+
+      set({
+        stats: res?.data?.data ?? null,
+        statsLoading: false,
+      });
+
+      return res?.data?.data;
+    } catch (error) {
+      console.error("Fetch type stats error:", error);
+
+      set({
+        statsLoading: false,
+      });
+
       throw error;
     }
   },
