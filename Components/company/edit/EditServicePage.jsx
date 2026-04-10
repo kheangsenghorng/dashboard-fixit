@@ -282,6 +282,7 @@ export default function EditServicePage() {
       );
 
       const response = await updateService(id, payload);
+
       if (response.success) {
         toast.success("Service updated successfully!");
         router.push(isAdmin ? "/admin/services" : "/owner/services");

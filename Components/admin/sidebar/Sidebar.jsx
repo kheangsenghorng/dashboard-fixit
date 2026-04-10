@@ -32,8 +32,8 @@ import {
   Building2 as Company,
   TableProperties,
   List,
-  Type,       
-  Shapes, 
+  Type,
+  Shapes,
   Menu,
 } from "lucide-react";
 import { useAuthStore } from "../../../app/store/useAuthStore";
@@ -46,7 +46,6 @@ const OWNER_BLOCKED_ROUTES = [
   "/admin/providers",
   "/admin/payments",
   "/admin/invoices",
-  "/admin/coupons",
   "/admin/settings",
   "/admin/analytics",
   "/admin/create/users",
@@ -83,7 +82,8 @@ const NAV_GROUPS = [
     items: [
       {
         name: "Services",
-        href: ({ isOwner }) => (isOwner ? "/owner/services" : "/admin/services"),
+        href: ({ isOwner }) =>
+          isOwner ? "/owner/services" : "/admin/services",
         icon: Wrench,
       },
       { name: "Mechanical Items", href: "/admin/products", icon: Package },
@@ -104,7 +104,12 @@ const NAV_GROUPS = [
     items: [
       { name: "Transactions", href: "/admin/payments", icon: Wallet },
       { name: "Invoices", href: "/admin/invoices", icon: FileText },
-      { name: "Coupons & Promos", href: "/admin/coupons", icon: Ticket },
+
+      {
+        name: "Coupons & Promos",
+        href: ({ isOwner }) => (isOwner ? "/owner/coupons" : "/admin/coupons"),
+        icon: Ticket,
+      },
     ],
   },
 ];
@@ -195,8 +200,7 @@ export default function AdminSidebar({ isOpen, toggleSidebar, isCollapsed }) {
   const canOpenAdminUI = isAdmin || isOwner;
 
   const resolveHref = useCallback(
-    (href) =>
-      typeof href === "function" ? href({ isOwner, isAdmin }) : href,
+    (href) => (typeof href === "function" ? href({ isOwner, isAdmin }) : href),
     [isOwner, isAdmin]
   );
 
@@ -212,16 +216,15 @@ export default function AdminSidebar({ isOpen, toggleSidebar, isCollapsed }) {
     [isOwner, resolveHref]
   );
 
-
   // Checks if the current route matches the item's href (including sub-routes)
   const isItemActive = useCallback(
     (item) => {
       const finalHref = resolveHref(item.href);
       if (!finalHref) return false;
-  
+
       const current = pathname.split("?")[0];
       const base = finalHref.split("?")[0];
-  
+
       return (
         current === base ||
         current.startsWith(base + "/") ||
@@ -343,7 +346,13 @@ export default function AdminSidebar({ isOpen, toggleSidebar, isCollapsed }) {
   };
 
   // ── Dropdown trigger button ──
-  const DropdownButton = ({ onClick, isOpen: open, icon: Icon, label, variant = "dark" }) => (
+  const DropdownButton = ({
+    onClick,
+    isOpen: open,
+    icon: Icon,
+    label,
+    variant = "dark",
+  }) => (
     <button
       onClick={onClick}
       className={cn(
@@ -449,24 +458,48 @@ export default function AdminSidebar({ isOpen, toggleSidebar, isCollapsed }) {
 
               <Collapsible isOpen={isCreateOpen}>
                 <div className="mt-1 bg-white border border-slate-100 rounded-xl shadow-md overflow-hidden">
-                  <NavLink href="/admin/create/users" icon={UserPlus} onClick={() => setIsCreateOpen(false)}>
+                  <NavLink
+                    href="/admin/create/users"
+                    icon={UserPlus}
+                    onClick={() => setIsCreateOpen(false)}
+                  >
                     New User
                   </NavLink>
-                  <NavLink href="/admin/create/company" icon={Company} onClick={() => setIsCreateOpen(false)}>
+                  <NavLink
+                    href="/admin/create/company"
+                    icon={Company}
+                    onClick={() => setIsCreateOpen(false)}
+                  >
                     New Company
                   </NavLink>
-                  <NavLink href="/admin/create/provider" icon={HardHat} onClick={() => setIsCreateOpen(false)}>
+                  <NavLink
+                    href="/admin/create/provider"
+                    icon={HardHat}
+                    onClick={() => setIsCreateOpen(false)}
+                  >
                     New Provider
                   </NavLink>
 
-                  <NavLink href="/admin/create/categories" icon={Wrench} onClick={() => setIsCreateOpen(false)}>
+                  <NavLink
+                    href="/admin/create/categories"
+                    icon={Wrench}
+                    onClick={() => setIsCreateOpen(false)}
+                  >
                     New Categories
                   </NavLink>
-                  <NavLink href="/admin/create/types" icon={Wrench} onClick={() => setIsCreateOpen(false)}>
+                  <NavLink
+                    href="/admin/create/types"
+                    icon={Wrench}
+                    onClick={() => setIsCreateOpen(false)}
+                  >
                     New Types
                   </NavLink>
 
-                  <NavLink href="/admin/create/service" icon={Wrench} onClick={() => setIsCreateOpen(false)}>
+                  <NavLink
+                    href="/admin/create/service"
+                    icon={Wrench}
+                    onClick={() => setIsCreateOpen(false)}
+                  >
                     New Service
                   </NavLink>
                 </div>
@@ -488,16 +521,32 @@ export default function AdminSidebar({ isOpen, toggleSidebar, isCollapsed }) {
 
               <Collapsible isOpen={isTableOpen}>
                 <div className="mt-1 bg-white border border-slate-100 rounded-xl shadow-md overflow-hidden max-h-72 overflow-y-auto">
-                  <NavLink href="/admin/users" icon={Users} onClick={() => setIsTableOpen(false)}>
+                  <NavLink
+                    href="/admin/users"
+                    icon={Users}
+                    onClick={() => setIsTableOpen(false)}
+                  >
                     Users List
                   </NavLink>
-                  <NavLink href="/admin/company" icon={Company} onClick={() => setIsTableOpen(false)}>
+                  <NavLink
+                    href="/admin/company"
+                    icon={Company}
+                    onClick={() => setIsTableOpen(false)}
+                  >
                     Company List
                   </NavLink>
-                  <NavLink href="/admin/categories" icon={Layers} onClick={() => setIsTableOpen(false)}>
+                  <NavLink
+                    href="/admin/categories"
+                    icon={Layers}
+                    onClick={() => setIsTableOpen(false)}
+                  >
                     Category List
                   </NavLink>
-                  <NavLink href="/admin/types" icon={Layers} onClick={() => setIsTableOpen(false)}>
+                  <NavLink
+                    href="/admin/types"
+                    icon={Layers}
+                    onClick={() => setIsTableOpen(false)}
+                  >
                     Type List
                   </NavLink>
                   <NavLink
@@ -509,7 +558,11 @@ export default function AdminSidebar({ isOpen, toggleSidebar, isCollapsed }) {
                   >
                     Services List
                   </NavLink>
-                  <NavLink href="/admin/products" icon={Package} onClick={() => setIsTableOpen(false)}>
+                  <NavLink
+                    href="/admin/products"
+                    icon={Package}
+                    onClick={() => setIsTableOpen(false)}
+                  >
                     Products List
                   </NavLink>
                 </div>
@@ -605,7 +658,9 @@ export default function AdminSidebar({ isOpen, toggleSidebar, isCollapsed }) {
                         </CollapseTooltip>
                       );
                     }
-                    return <React.Fragment key={item.name}>{inner}</React.Fragment>;
+                    return (
+                      <React.Fragment key={item.name}>{inner}</React.Fragment>
+                    );
                   })}
                 </div>
               </div>

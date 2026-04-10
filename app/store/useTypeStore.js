@@ -69,7 +69,7 @@ export const useTypeStore = create((set, get) => ({
               ? state.typeCategory.map((t) =>
                   t.id === updatedType.id ? updatedType : t
                 )
-              : state.typeCategory
+              : [updatedType, ...state.typeCategory]
             : state.typeCategory.filter((t) => t.id !== updatedType.id),
 
         type: state.type?.id === updatedType.id ? updatedType : state.type,
@@ -225,23 +225,47 @@ export const useTypeStore = create((set, get) => ({
   updateManyStatus: async (ids, status) => {
     try {
       await typesService.updateManyStatus(ids, status);
-      set((state) => ({
-        types: state.types.map((t) =>
+
+      set((state) => {
+        const updatedTypes = state.types.map((t) =>
           ids.includes(t.id) ? { ...t, status } : t
-        ),
-        activeTypes:
-          status === "active"
-            ? state.activeTypes
-            : state.activeTypes.filter((t) => !ids.includes(t.id)),
-        typeCategory:
-          status === "active"
-            ? state.typeCategory
-            : state.typeCategory.filter((t) => !ids.includes(t.id)),
-        type:
-          state.type && ids.includes(state.type.id)
-            ? { ...state.type, status }
-            : state.type,
-      }));
+        );
+
+        const changedItems = updatedTypes.filter((t) => ids.includes(t.id));
+
+        return {
+          types: updatedTypes,
+
+          activeTypes:
+            status === "active"
+              ? [
+                  ...changedItems.filter(
+                    (item) => !state.activeTypes.some((t) => t.id === item.id)
+                  ),
+                  ...state.activeTypes.map((t) =>
+                    ids.includes(t.id) ? { ...t, status } : t
+                  ),
+                ]
+              : state.activeTypes.filter((t) => !ids.includes(t.id)),
+
+          typeCategory:
+            status === "active"
+              ? [
+                  ...changedItems.filter(
+                    (item) => !state.typeCategory.some((t) => t.id === item.id)
+                  ),
+                  ...state.typeCategory.map((t) =>
+                    ids.includes(t.id) ? { ...t, status } : t
+                  ),
+                ]
+              : state.typeCategory.filter((t) => !ids.includes(t.id)),
+
+          type:
+            state.type && ids.includes(state.type.id)
+              ? { ...state.type, status }
+              : state.type,
+        };
+      });
     } catch (error) {
       console.error("Bulk status update error:", error);
       throw error;

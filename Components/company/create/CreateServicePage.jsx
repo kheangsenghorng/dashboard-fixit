@@ -121,6 +121,7 @@ export default function CreateServicePage() {
       });
 
       const res = await createService(data);
+      console.log(res);
 
       if (res.success) {
         toast.success("Service live!");
