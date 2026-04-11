@@ -1,19 +1,36 @@
 import { create } from "zustand";
 import couponService from "../services/couponService";
 
-const useCouponStore = create((set) => ({
+const defaultQueryParams = {
+  page: 1,
+  search: "",
+  status: "",
+  owner_id: "",
+};
+
+const useCouponStore = create((set, get) => ({
   coupons: [],
   coupon: null,
   loading: false,
   error: null,
   meta: null,
   countCoupon: null,
+  lastParams: defaultQueryParams,
 
   fetchCoupons: async (params = {}) => {
-    set({ loading: true, error: null });
+    const mergedParams = {
+      ...get().lastParams,
+      ...params,
+    };
+
+    set({
+      loading: true,
+      error: null,
+      lastParams: mergedParams,
+    });
 
     try {
-      const res = await couponService.getAll(params);
+      const res = await couponService.getAll(mergedParams);
       const payload = res.data;
 
       set({
@@ -39,12 +56,58 @@ const useCouponStore = create((set) => ({
     }
   },
 
+  refreshCoupons: async () => {
+    const params = get().lastParams;
+    await get().fetchCoupons(params);
+  },
+
+  fetchCouponsByOwner: async (owner_id) => {
+    set({ loading: true, error: null });
+
+    try {
+      const res = await couponService.getbyOwner(owner_id);
+      const payload = res.data;
+
+      set({
+        coupons: payload.data ?? [],
+        loading: false,
+      });
+    } catch (error) {
+      set({
+        error: error.response?.data?.message || "Failed to fetch owner coupons",
+        loading: false,
+      });
+    }
+  },
+
+  fetchCouponStatsByOwner: async (owner_id) => {
+    set({ loading: true, error: null });
+
+    try {
+      const res = await couponService.getStatsByOwner(owner_id);
+
+      set({
+        countCoupon: res.data.data,
+        loading: false,
+      });
+    } catch (error) {
+      set({
+        error:
+          error.response?.data?.message || "Failed to fetch owner coupon stats",
+        loading: false,
+      });
+    }
+  },
+
   fetchCouponsStats: async () => {
     set({ loading: true, error: null });
+
     try {
       const res = await couponService.getStats();
+
       set({
         countCoupon: res.data.data || res.data,
+        loading: false,
       });
     } catch (error) {
       set({
@@ -56,8 +119,10 @@ const useCouponStore = create((set) => ({
 
   fetchCouponById: async (id) => {
     set({ loading: true, error: null });
+
     try {
       const res = await couponService.getById(id);
+
       set({
         coupon: res.data.data || res.data,
         loading: false,
@@ -72,12 +137,15 @@ const useCouponStore = create((set) => ({
 
   createCoupon: async (data) => {
     set({ loading: true, error: null });
+
     try {
       const res = await couponService.create(data);
+
       set((state) => ({
         coupons: [res.data.data || res.data, ...state.coupons],
         loading: false,
       }));
+
       return res.data;
     } catch (error) {
       set({
@@ -90,6 +158,7 @@ const useCouponStore = create((set) => ({
 
   updateCoupon: async (id, data) => {
     set({ loading: true, error: null });
+
     try {
       const res = await couponService.update(id, data);
       const updatedCoupon = res.data.data || res.data;
@@ -114,8 +183,10 @@ const useCouponStore = create((set) => ({
 
   deleteCoupon: async (id) => {
     set({ loading: true, error: null });
+
     try {
       await couponService.delete(id);
+
       set((state) => ({
         coupons: state.coupons.filter((item) => item.id !== id),
         loading: false,
@@ -127,6 +198,31 @@ const useCouponStore = create((set) => ({
       });
       throw error;
     }
+  },
+
+  applyRealtimeCouponUsage: (payload) => {
+    const usage = payload?.data;
+    const coupon = usage?.coupon;
+
+    if (!coupon) return;
+
+    set((state) => ({
+      coupons: state.coupons.map((item) =>
+        item.id === coupon.id
+          ? {
+              ...item,
+              ...coupon,
+            }
+          : item
+      ),
+      coupon:
+        state.coupon?.id === coupon.id
+          ? {
+              ...state.coupon,
+              ...coupon,
+            }
+          : state.coupon,
+    }));
   },
 }));
 

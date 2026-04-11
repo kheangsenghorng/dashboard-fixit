@@ -11,8 +11,10 @@ const useCouponUsageStore = create((set) => ({
 
   fetchCouponUsageById: async (id) => {
     set({ loading: true, error: null });
+
     try {
       const res = await couponUsageService.getById(id);
+
       set({
         couponUsage: res.data.data || res.data,
         loading: false,
@@ -28,13 +30,10 @@ const useCouponUsageStore = create((set) => ({
   fetchTopPerformingCoupons: async () => {
     try {
       const response = await couponUsageService.getTopPerformingCoupons();
-
       const data = response.data?.data;
 
       set({
-        topPerformingCoupons: [data?.top_1, data?.top_2, data?.top_3].filter(
-          Boolean
-        ),
+        topPerformingCoupons: [data?.top_1, data?.top_2, data?.top_3].filter(Boolean),
       });
     } catch (error) {
       console.error("Failed to fetch top performing coupons:", error);
@@ -43,12 +42,15 @@ const useCouponUsageStore = create((set) => ({
 
   createCouponUsage: async (data) => {
     set({ loading: true, error: null });
+
     try {
       const res = await couponUsageService.create(data);
+
       set((state) => ({
         couponUsages: [res.data.data || res.data, ...state.couponUsages],
         loading: false,
       }));
+
       return res.data;
     } catch (error) {
       set({
@@ -61,6 +63,7 @@ const useCouponUsageStore = create((set) => ({
 
   updateCouponUsage: async (id, data) => {
     set({ loading: true, error: null });
+
     try {
       const res = await couponUsageService.update(id, data);
       const updatedCouponUsage = res.data.data || res.data;
@@ -85,8 +88,10 @@ const useCouponUsageStore = create((set) => ({
 
   deleteCouponUsage: async (id) => {
     set({ loading: true, error: null });
+
     try {
       await couponUsageService.delete(id);
+
       set((state) => ({
         couponUsages: state.couponUsages.filter((item) => item.id !== id),
         loading: false,

@@ -91,10 +91,9 @@ const CreateCouponCompany = () => {
     try {
       await createCoupon(payload);
       toast.success("Coupon created successfully!");
-      router.push("/admin/coupons");
+      router.push("/owner/coupons");
     } catch (err) {
       toast.error("Failed to create coupon");
-      console.error("Failed to create coupon:", err);
     }
   };
 
@@ -102,6 +101,8 @@ const CreateCouponCompany = () => {
     form.discount_type === "percent"
       ? `${form.discount_value || 0}%`
       : `$${form.discount_value || 0}`;
+
+  if (!authUser || !initialized) return;
 
   return (
     <div className="min-h-screen bg-slate-50 p-8 font-sans text-slate-900">

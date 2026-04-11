@@ -1,85 +1,71 @@
 "use client";
 
-import React, { useEffect, useState } from "react";
+import React, { useEffect, useMemo, useState } from "react";
 import {
   Plus,
   CheckCircle2,
   Timer,
   Ban,
-  ChevronLeft,
-  ChevronRight,
   Pencil,
   Trash2,
   Ticket,
   Search,
   Filter,
   X,
+  ChevronUp,
+  ChevronDown,
 } from "lucide-react";
 import Link from "next/link";
+import { toast } from "react-toastify";
 
 import useCouponStore from "../../../app/store/useCouponStore";
 import useCouponUsageStore from "../../../app/store/useCouponUsageStore";
-
-import { toast } from "react-toastify";
 import DeleteConfirmModal from "../../admin/DeleteConfirmModal";
+import { useRequireAuth } from "../../../app/hooks/useRequireAuth";
+import { useOwnerStore } from "../../../app/store/owner/useOwnerStore";
+import CouponUsageListener from "../../realtime/CouponUsageListener";
 
 export default function CouponRegistryCompany() {
+  const { user: authUser, initialized } = useRequireAuth();
+  const userId = authUser?.id;
+
   const {
-    fetchCoupons,
+    fetchCouponsByOwner,
+    fetchCouponStatsByOwner,
     coupons,
-    fetchCouponsStats,
-    countCoupon,
-    meta,
     deleteCoupon,
     loading,
+    countCoupon,
   } = useCouponStore();
 
-  const { fetchTopPerformingCoupons, topPerformingCoupons } =
-    useCouponUsageStore();
+  const { fetchOwner, owner } = useOwnerStore();
 
   const [searchQuery, setSearchQuery] = useState("");
   const [statusFilter, setStatusFilter] = useState("all");
-  const [ownerFilter, setOwnerFilter] = useState("");
   const [deleteModalOpen, setDeleteModalOpen] = useState(false);
   const [selectedCouponId, setSelectedCouponId] = useState(null);
+  const [showMobileStats, setShowMobileStats] = useState(false);
 
   useEffect(() => {
-    fetchCoupons({
-      page: 1,
-      search: searchQuery,
-      status: statusFilter === "all" ? "" : statusFilter,
-      owner_id: ownerFilter || "",
-    });
-
-    fetchCouponsStats();
-  }, [fetchCoupons, fetchCouponsStats, searchQuery, statusFilter, ownerFilter]);
+    if (userId) {
+      fetchOwner(userId);
+    }
+  }, [userId, fetchOwner]);
 
   useEffect(() => {
-    fetchTopPerformingCoupons();
-  }, [fetchTopPerformingCoupons]);
+    if (!owner?.id) return;
+
+    fetchCouponsByOwner(owner.id);
+    fetchCouponStatsByOwner(owner.id);
+  }, [owner?.id, fetchCouponsByOwner, fetchCouponStatsByOwner]);
 
   const handleSearch = (e) => {
     e.preventDefault();
-
-    fetchCoupons({
-      page: 1,
-      search: searchQuery,
-      status: statusFilter === "all" ? "" : statusFilter,
-      owner_id: ownerFilter || "",
-    });
   };
 
   const resetFilters = () => {
     setSearchQuery("");
     setStatusFilter("all");
-    setOwnerFilter("");
-
-    fetchCoupons({
-      page: 1,
-      search: "",
-      status: "",
-      owner_id: "",
-    });
   };
 
   const handleDeleteClick = (id) => {
@@ -92,6 +78,12 @@ export default function CouponRegistryCompany() {
 
     try {
       await deleteCoupon(selectedCouponId);
+
+      if (owner?.id) {
+        fetchCouponsByOwner(owner.id);
+        fetchCouponStatsByOwner(owner.id);
+      }
+
       toast.success("Coupon deleted successfully!");
       setDeleteModalOpen(false);
       setSelectedCouponId(null);
@@ -99,6 +91,21 @@ export default function CouponRegistryCompany() {
       toast.error("Failed to delete coupon");
     }
   };
+
+  const filteredCoupons = useMemo(() => {
+    return (coupons || []).filter((coupon) => {
+      const matchSearch = searchQuery
+        ? coupon.unique_id
+            ?.toLowerCase()
+            .includes(searchQuery.trim().toLowerCase())
+        : true;
+
+      const matchStatus =
+        statusFilter === "all" ? true : coupon.status === statusFilter;
+
+      return matchSearch && matchStatus;
+    });
+  }, [coupons, searchQuery, statusFilter]);
 
   const stats = [
     {
@@ -135,8 +142,12 @@ export default function CouponRegistryCompany() {
     },
   ];
 
+  if (!initialized) return null;
+  if (!authUser) return null;
+
   return (
     <div className="min-h-screen bg-slate-50 p-8 font-sans text-slate-900">
+      <CouponUsageListener />
       <div className="flex justify-between items-start mb-8">
         <div>
           <h1 className="text-3xl font-bold text-slate-800">Coupon Registry</h1>
@@ -154,28 +165,56 @@ export default function CouponRegistryCompany() {
         </Link>
       </div>
 
-      <div className="grid grid-cols-1 md:grid-cols-4 gap-6 mb-8">
+      {/* MOBILE STATS TOGGLE BUTTON (Only visible on small screens) */}
+      <button
+        onClick={() => setShowMobileStats(!showMobileStats)}
+        className="sm:hidden w-full mb-4 bg-white p-4 rounded-xl border border-slate-100 flex items-center justify-between shadow-sm"
+      >
+        <div className="flex items-center gap-2">
+          <div className="bg-blue-50 p-2 rounded-lg">
+            <Ticket className="w-5 h-5 text-blue-600" />
+          </div>
+          <span className="font-bold text-slate-700 text-sm">
+            {showMobileStats ? "Hide Dashboard Stats" : "Show Dashboard Stats"}
+          </span>
+        </div>
+        <div className="text-slate-400">
+          {showMobileStats ? (
+            <ChevronUp size={20} />
+          ) : (
+            <ChevronDown size={20} />
+          )}
+        </div>
+      </button>
+
+      {/* STATS GRID */}
+      <div
+        className={`
+  ${showMobileStats ? "grid" : "hidden"} 
+  sm:grid 
+  grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4 sm:gap-6 mb-8
+`}
+      >
         {stats.map((stat, i) => (
           <div
             key={i}
-            className="bg-white p-6 rounded-xl shadow-sm border border-slate-100 relative overflow-hidden"
+            className="bg-white p-5 rounded-xl shadow-sm border border-slate-100 flex flex-col justify-between"
           >
-            <div className="flex justify-between items-start">
-              <div className={`${stat.bg} p-3 rounded-lg ${stat.color}`}>
+            <div className="flex justify-between items-center mb-4">
+              <div className={`${stat.bg} p-2.5 rounded-lg ${stat.color}`}>
                 {stat.icon}
               </div>
               <span
-                className={`text-[10px] font-bold px-2 py-1 rounded ${stat.bg} ${stat.color} tracking-wider uppercase`}
+                className={`text-[10px] font-bold px-2 py-1 rounded ${stat.bg} ${stat.color} uppercase tracking-wider`}
               >
                 {stat.label}
               </span>
             </div>
-
-            <div className="mt-4">
-              <h3 className="text-4xl font-bold text-slate-800">
+            <div>
+              <h3 className="text-3xl font-bold text-slate-800">
                 {stat.count}
               </h3>
-              <p className="text-slate-400 text-sm mt-1">{stat.desc}</p>
+              <p className="text-slate-400 text-xs mt-1">{stat.desc}</p>
             </div>
           </div>
         ))}
@@ -210,19 +249,6 @@ export default function CouponRegistryCompany() {
 
         <div className="flex items-center gap-3">
           <div className="flex items-center gap-2 bg-slate-50 border border-slate-200 rounded-lg px-3 py-1.5">
-            <span className="text-xs font-bold text-slate-400 uppercase">
-              Owner:
-            </span>
-            <input
-              type="text"
-              placeholder="ID (e.g. 101)"
-              value={ownerFilter}
-              onChange={(e) => setOwnerFilter(e.target.value)}
-              className="bg-transparent text-sm font-medium focus:outline-none text-slate-600 w-24"
-            />
-          </div>
-
-          <div className="flex items-center gap-2 bg-slate-50 border border-slate-200 rounded-lg px-3 py-1.5">
             <Filter size={16} className="text-slate-400" />
             <select
               value={statusFilter}
@@ -236,7 +262,7 @@ export default function CouponRegistryCompany() {
             </select>
           </div>
 
-          {(searchQuery || statusFilter !== "all" || ownerFilter) && (
+          {(searchQuery || statusFilter !== "all") && (
             <button
               onClick={resetFilters}
               type="button"
@@ -249,7 +275,7 @@ export default function CouponRegistryCompany() {
         </div>
       </div>
 
-      <div className="grid grid-cols-1 lg:grid-cols-3 gap-8">
+      <div className="grid grid-cols-1 lg:grid-cols-2 gap-8">
         <div className="lg:col-span-2 bg-white rounded-xl shadow-sm border border-slate-100 overflow-hidden flex flex-col">
           <div className="overflow-x-auto">
             <table className="w-full text-left">
@@ -265,9 +291,9 @@ export default function CouponRegistryCompany() {
                 </tr>
               </thead>
 
-              <tbody className="divide-y divide-slate-50">
-                {coupons.length > 0 ? (
-                  coupons.map((coupon) => {
+              <tbody className="divide-y divide-slate-100">
+                {filteredCoupons.length > 0 ? (
+                  filteredCoupons.map((coupon) => {
                     const usagePercent =
                       coupon.max_uses > 0
                         ? (Number(coupon.total_times_used) / coupon.max_uses) *
@@ -277,33 +303,51 @@ export default function CouponRegistryCompany() {
                     return (
                       <tr
                         key={coupon.id}
-                        className="group hover:bg-slate-50/30 transition-colors"
+                        /* Added 'even:bg-slate-50/50' to create the alternating row effect from your image */
+                        className="group hover:bg-slate-100/50 transition-colors even:bg-slate-50/50"
                       >
-                        <td className="px-6 py-5 font-bold text-blue-600 text-[13px] tracking-tight uppercase">
+                        <td className="px-6 py-8 font-bold text-blue-600 text-[13px] tracking-tight uppercase">
                           {coupon.unique_id}
                         </td>
 
-                        <td className="px-6 py-5 text-slate-500 text-[13px] font-medium">
+                        <td className="px-6 py-8 text-slate-500 text-[13px] font-medium">
                           {coupon.owner_id ?? "Global"}
                         </td>
 
-                        <td className="px-6 py-5">
+                        {/* UPDATED DISCOUNT CELL */}
+                        <td className="px-6 py-4">
                           <div className="flex items-center gap-2">
-                            <span className="text-slate-800 font-extrabold text-[15px]">
+                            {/* Smaller, bold value */}
+                            <span className="text-base font-bold text-slate-800 tracking-tight">
                               {coupon.discount_type === "percent"
                                 ? `${coupon.discount_value}%`
                                 : `$${coupon.discount_value}`}
                             </span>
+
+                            {/* Small, compact badge */}
+                            <span className="flex items-center gap-1.5 px-1.5 py-0.5 bg-white text-slate-500 text-[10px] font-bold rounded border border-slate-200">
+                              {/* The isolated color dot */}
+                              <span
+                                className={`w-1.5 h-1.5 rounded-full ${
+                                  coupon.discount_type === "percent"
+                                    ? "bg-blue-500"
+                                    : "bg-indigo-500"
+                                }`}
+                              />
+                              {coupon.discount_type === "percent"
+                                ? "PCT"
+                                : "FIX"}
+                            </span>
                           </div>
                         </td>
 
-                        <td className="px-6 py-5 text-[13px] font-semibold text-slate-700">
+                        <td className="px-6 py-8 text-[13px] font-semibold text-slate-700">
                           {coupon.expires_at
                             ? new Date(coupon.expires_at).toLocaleDateString()
                             : "No expiry"}
                         </td>
 
-                        <td className="px-6 py-5">
+                        <td className="px-6 py-8">
                           <div className="w-32">
                             <div className="h-1.5 w-full bg-slate-100 rounded-full overflow-hidden mb-1.5">
                               <div
@@ -317,7 +361,6 @@ export default function CouponRegistryCompany() {
                                 }}
                               />
                             </div>
-
                             <div className="text-[11px] font-medium text-slate-400">
                               {Number(coupon.total_times_used).toLocaleString()}{" "}
                               / {Number(coupon.max_uses).toLocaleString()}
@@ -325,7 +368,7 @@ export default function CouponRegistryCompany() {
                           </div>
                         </td>
 
-                        <td className="px-6 py-5">
+                        <td className="px-6 py-8">
                           <span
                             className={`inline-flex items-center px-2.5 py-1 rounded text-[12px] font-bold leading-none ${
                               coupon.status === "active"
@@ -339,15 +382,14 @@ export default function CouponRegistryCompany() {
                           </span>
                         </td>
 
-                        <td className="px-6 py-5 text-right">
+                        <td className="px-6 py-8 text-right">
                           <div className="flex justify-end gap-3">
                             <Link
-                              href={`/admin/edit/coupons/${coupon.id}`}
+                              href={`/owner/edit/coupons/${coupon.id}`}
                               className="text-slate-400 hover:text-blue-600 transition-colors"
                             >
                               <Pencil size={18} />
                             </Link>
-
                             <button
                               type="button"
                               onClick={() => handleDeleteClick(coupon.id)}
@@ -376,79 +418,8 @@ export default function CouponRegistryCompany() {
 
           <div className="px-6 py-4 bg-slate-50/30 border-t border-slate-100 flex items-center justify-between mt-auto">
             <span className="text-[11px] font-bold text-slate-500 uppercase tracking-widest">
-              Showing {meta?.from ?? 0}-{meta?.to ?? 0} of {meta?.total ?? 0}{" "}
-              results
+              Showing {filteredCoupons.length} of {coupons?.length ?? 0} results
             </span>
-
-            <div className="flex items-center gap-2">
-              <button
-                type="button"
-                disabled={!meta?.prev_page_url}
-                onClick={() =>
-                  fetchCoupons({
-                    page: meta.current_page - 1,
-                    search: searchQuery,
-                    status: statusFilter === "all" ? "" : statusFilter,
-                    owner_id: ownerFilter || "",
-                  })
-                }
-                className="p-2 rounded-lg border border-slate-200 text-slate-400 hover:text-slate-700 hover:bg-slate-100 transition-colors disabled:opacity-40 disabled:cursor-not-allowed"
-              >
-                <ChevronLeft size={18} />
-              </button>
-
-              <span className="text-sm font-semibold text-slate-600">
-                Page {meta?.current_page ?? 1} of {meta?.last_page ?? 1}
-              </span>
-
-              <button
-                type="button"
-                disabled={!meta?.next_page_url}
-                onClick={() =>
-                  fetchCoupons({
-                    page: meta.current_page + 1,
-                    search: searchQuery,
-                    status: statusFilter === "all" ? "" : statusFilter,
-                    owner_id: ownerFilter || "",
-                  })
-                }
-                className="p-2 rounded-lg border border-slate-200 text-slate-400 hover:text-slate-700 hover:bg-slate-100 transition-colors disabled:opacity-40 disabled:cursor-not-allowed"
-              >
-                <ChevronRight size={18} />
-              </button>
-            </div>
-          </div>
-        </div>
-
-        <div className="space-y-6">
-          <div className="bg-white p-6 rounded-xl shadow-sm border border-slate-100">
-            <h2 className="text-xl font-bold text-slate-800 mb-6">
-              Top Performing
-            </h2>
-
-            <div className="space-y-6">
-              {topPerformingCoupons.map((item, index) => (
-                <div
-                  key={item.coupon_id}
-                  className="flex items-center justify-between"
-                >
-                  <div className="flex items-center gap-4">
-                    <div className="w-10 h-10 bg-blue-50 text-blue-600 rounded flex items-center justify-center font-bold">
-                      {index + 1}
-                    </div>
-
-                    <div>
-                      <div className="text-xs font-bold text-slate-800">
-                        {item.coupon?.unique_id}
-                      </div>
-                      <div className="text-xs text-slate-400">
-                        {Number(item.total_times_used)} Redemptions
-                      </div>
-                    </div>
-                  </div>
-                </div>
-              ))}
-            </div>
           </div>
         </div>
       </div>
