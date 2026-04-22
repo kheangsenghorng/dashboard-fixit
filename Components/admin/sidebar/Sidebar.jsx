@@ -1,44 +1,42 @@
 "use client";
 
 import React, {
+  useCallback,
   useEffect,
   useMemo,
-  useState,
-  useCallback,
   useRef,
+  useState,
 } from "react";
 import Link from "next/link";
 import { usePathname, useRouter } from "next/navigation";
 import {
-  LayoutDashboard,
-  UserPlus,
-  Wrench,
-  HardHat,
-  Users,
-  Layers,
-  Package,
-  Settings,
-  Plus,
-  ChevronDown,
-  LogOut,
-  ShieldCheck,
+  ArrowUpRight,
   BarChart4,
   Bell,
-  X,
-  ChevronRight,
-  Wallet,
-  FileText,
-  Ticket,
-  Building2 as Company,
-  TableProperties,
+  ChevronDown,
+  HardHat,
+  LayoutDashboard,
+  Layers,
   List,
-  Type,
+  LogOut,
+  Package,
+  Plus,
+  RotateCcw,
+  Settings,
   Shapes,
-  Menu,
+  ShieldCheck,
+  TableProperties,
+  Ticket,
+  UserPlus,
+  Users,
+  Wallet,
+  Wrench,
+  X,
+  FileText,
+  Building2 as Company,
+  History,
 } from "lucide-react";
 import { useAuthStore } from "../../../app/store/useAuthStore";
-
-// ─── Constants ────────────────────────────────────────────────────────────────
 
 const OWNER_BLOCKED_ROUTES = [
   "/admin/users",
@@ -66,7 +64,11 @@ const NAV_GROUPS = [
           isOwner ? "/owner/dashboard" : "/admin/dashboard",
         icon: LayoutDashboard,
       },
-      { name: "Analytics", href: "/admin/analytics", icon: BarChart4 },
+      {
+        name: "Analytics",
+        href: "/admin/analytics",
+        icon: BarChart4,
+      },
     ],
   },
   {
@@ -87,24 +89,44 @@ const NAV_GROUPS = [
         icon: Wrench,
       },
       { name: "Mechanical Items", href: "/admin/products", icon: Package },
-      {
-        name: "Categories",
-        href: "/admin/categories",
-        icon: Layers,
-      },
-      {
-        name: "Types",
-        href: "/admin/types",
-        icon: Shapes,
-      },
+      { name: "Categories", href: "/admin/categories", icon: Layers },
+      { name: "Types", href: "/admin/types", icon: Shapes },
     ],
   },
   {
     title: "Financial",
     items: [
-      { name: "Transactions", href: "/admin/payments", icon: Wallet },
+      {
+        name: "Payments",
+        icon: Wallet,
+        subItems: [
+          {
+            name: "Bookings",
+            href: ({ isOwner }) =>
+              isOwner ? "/owner/payments/bookings" : "/admin/payments/bookings",
+            icon: Ticket,
+          },
+          {
+            name: "Booking History",
+            href: ({ isOwner }) =>
+              isOwner ? "/owner/history/bookings" : "/admin/history/bookings",
+            icon: History,
+          },
+          {
+            name: "Payouts",
+            href: ({ isOwner }) =>
+              isOwner ? "/owner/payments/payouts" : "/admin/payments/payouts",
+            icon: ArrowUpRight,
+          },
+          {
+            name: "Refunds",
+            href: ({ isOwner }) =>
+              isOwner ? "/owner/payments/refunds" : "/admin/payments/refunds",
+            icon: RotateCcw,
+          },
+        ],
+      },
       { name: "Invoices", href: "/admin/invoices", icon: FileText },
-
       {
         name: "Coupons & Promos",
         href: ({ isOwner }) => (isOwner ? "/owner/coupons" : "/admin/coupons"),
@@ -114,36 +136,61 @@ const NAV_GROUPS = [
   },
 ];
 
-// ─── Helpers ──────────────────────────────────────────────────────────────────
+const CREATE_LINKS = [
+  { name: "New User", href: "/admin/create/users", icon: UserPlus },
+  { name: "New Company", href: "/admin/create/company", icon: Company },
+  { name: "New Provider", href: "/admin/create/provider", icon: HardHat },
+  { name: "New Categories", href: "/admin/create/categories", icon: Wrench },
+  { name: "New Types", href: "/admin/create/types", icon: Wrench },
+  { name: "New Service", href: "/admin/create/service", icon: Wrench },
+];
 
-const normalizeRole = (r) => {
-  if (!r) return null;
-  if (typeof r === "string") return r.toLowerCase();
-  if (typeof r === "object")
-    return (r.slug || r.name || r.role || "").toString().toLowerCase();
-  return null;
-};
-
-const getUserRoles = (user) => {
-  if (!user) return [];
-  const roles = [];
-  if (user.role) roles.push(normalizeRole(user.role));
-  if (user.roles) {
-    if (Array.isArray(user.roles)) roles.push(...user.roles.map(normalizeRole));
-    else roles.push(normalizeRole(user.roles));
-  }
-  if (user.user?.role) roles.push(normalizeRole(user.user.role));
-  return Array.from(new Set(roles.filter(Boolean)));
-};
-
-const hasAnyRole = (user, allowedRoles = []) =>
-  getUserRoles(user).some((r) => allowedRoles.includes(r));
+const MANAGE_LINKS = [
+  { name: "Users List", href: "/admin/users", icon: Users },
+  { name: "Company List", href: "/admin/company", icon: Company },
+  { name: "Category List", href: "/admin/categories", icon: Layers },
+  { name: "Type List", href: "/admin/types", icon: Layers },
+  {
+    name: "Services List",
+    href: ({ isOwner }) => (isOwner ? "/owner/services" : "/admin/services"),
+    icon: TableProperties,
+  },
+  { name: "Products List", href: "/admin/products", icon: Package },
+];
 
 const cn = (...classes) => classes.filter(Boolean).join(" ");
 
-// ─── Sub-components ───────────────────────────────────────────────────────────
+function normalizeRole(role) {
+  if (!role) return null;
+  if (typeof role === "string") return role.toLowerCase();
 
-/** Animated collapsible section */
+  if (typeof role === "object") {
+    return (role.slug || role.name || role.role || "").toString().toLowerCase();
+  }
+
+  return null;
+}
+
+function getUserRoles(user) {
+  if (!user) return [];
+
+  const roles = [
+    normalizeRole(user.role),
+    ...(Array.isArray(user.roles)
+      ? user.roles.map(normalizeRole)
+      : user.roles
+      ? [normalizeRole(user.roles)]
+      : []),
+    normalizeRole(user.user?.role),
+  ];
+
+  return [...new Set(roles.filter(Boolean))];
+}
+
+function hasAnyRole(user, allowedRoles = []) {
+  return getUserRoles(user).some((role) => allowedRoles.includes(role));
+}
+
 function Collapsible({ isOpen, children }) {
   return (
     <div
@@ -157,19 +204,16 @@ function Collapsible({ isOpen, children }) {
   );
 }
 
-/** Tooltip that appears when sidebar is collapsed */
 function CollapseTooltip({ label, children }) {
   return (
     <div className="group/tip relative flex">
       {children}
       <span
         className={cn(
-          "pointer-events-none absolute left-full ml-3 top-1/2 -translate-y-1/2",
-          "whitespace-nowrap rounded-lg bg-slate-900 px-2.5 py-1.5",
-          "text-xs font-semibold text-white shadow-lg",
-          "opacity-0 scale-95 transition-all duration-150",
-          "group-hover/tip:opacity-100 group-hover/tip:scale-100",
-          "z-[999]"
+          "pointer-events-none absolute left-full top-1/2 z-[999] ml-3 -translate-y-1/2",
+          "whitespace-nowrap rounded-lg bg-slate-900 px-2.5 py-1.5 text-xs font-semibold text-white shadow-lg",
+          "scale-95 opacity-0 transition-all duration-150",
+          "group-hover/tip:scale-100 group-hover/tip:opacity-100"
         )}
       >
         {label}
@@ -179,108 +223,160 @@ function CollapseTooltip({ label, children }) {
   );
 }
 
-// ─── Main Component ───────────────────────────────────────────────────────────
+function SectionLabel({ title, isCollapsed }) {
+  if (isCollapsed) {
+    return <hr className="mx-3 my-1 border-slate-100" />;
+  }
+
+  return (
+    <p className="mb-2 px-4 text-[10px] font-bold uppercase tracking-[0.18em] text-slate-400">
+      {title}
+    </p>
+  );
+}
+
+function DropdownButton({
+  onClick,
+  isOpen,
+  icon: Icon,
+  label,
+  variant = "dark",
+}) {
+  return (
+    <button
+      onClick={onClick}
+      className={cn(
+        "flex w-full items-center justify-between rounded-xl px-4 py-2.5 text-[13.5px] font-semibold",
+        "transition-all duration-150 active:scale-[0.98]",
+        variant === "dark"
+          ? "bg-slate-900 text-white shadow-sm hover:bg-slate-800"
+          : "border border-slate-200 bg-white text-slate-700 hover:bg-slate-50"
+      )}
+    >
+      <span className="flex items-center gap-2.5">
+        <Icon size={16} />
+        {label}
+      </span>
+
+      <ChevronDown
+        size={14}
+        className={cn(
+          "opacity-60 transition-transform duration-200",
+          isOpen && "rotate-180"
+        )}
+      />
+    </button>
+  );
+}
 
 export default function AdminSidebar({ isOpen, toggleSidebar, isCollapsed }) {
   const { user, logout, loading } = useAuthStore();
   const pathname = usePathname();
   const router = useRouter();
-  const [mounted, setMounted] = useState(false);
-
-  const [isCreateOpen, setIsCreateOpen] = useState(false);
-  const [isTableOpen, setIsTableOpen] = useState(false);
-  const [createCatOpen, setCreateCatOpen] = useState(false);
-
   const dropdownRef = useRef(null);
 
-  useEffect(() => setMounted(true), []);
+  const [mounted, setMounted] = useState(false);
+  const [isCreateOpen, setIsCreateOpen] = useState(false);
+  const [isTableOpen, setIsTableOpen] = useState(false);
+  const [isPaymentsOpen, setIsPaymentsOpen] = useState(false);
 
   const isAdmin = useMemo(() => hasAnyRole(user, ["admin"]), [user]);
   const isOwner = useMemo(() => hasAnyRole(user, ["owner"]), [user]);
   const canOpenAdminUI = isAdmin || isOwner;
 
+  const userInitial = user?.name?.charAt(0)?.toUpperCase() || "U";
+  const roleLabel = isOwner ? "Company Owner" : "Administrator";
+
   const resolveHref = useCallback(
     (href) => (typeof href === "function" ? href({ isOwner, isAdmin }) : href),
-    [isOwner, isAdmin]
+    [isAdmin, isOwner]
   );
 
-  // Determines if a route should be blocked for the owner role
   const isBlocked = useCallback(
     (hrefOrFn) => {
       if (!isOwner) return false;
+
       const href = resolveHref(hrefOrFn)?.split("?")[0];
       return OWNER_BLOCKED_ROUTES.some(
-        (route) => href === route || href?.startsWith(route + "/")
+        (route) => href === route || href?.startsWith(`${route}/`)
       );
     },
     [isOwner, resolveHref]
   );
 
-  // Checks if the current route matches the item's href (including sub-routes)
-  const isItemActive = useCallback(
-    (item) => {
-      const finalHref = resolveHref(item.href);
-      if (!finalHref) return false;
+  const isPathActive = useCallback(
+    (href) => {
+      if (!href || typeof href !== "string") return false;
 
-      const current = pathname.split("?")[0];
-      const base = finalHref.split("?")[0];
+      const currentPath = pathname.split("?")[0];
+      const targetPath = href.split("?")[0];
+      const lastSegment = targetPath.split("/").pop();
 
       return (
-        current === base ||
-        current.startsWith(base + "/") ||
-        current.includes(`/create/${base.split("/").pop()}`) ||
-        current.includes(`/edit/${base.split("/").pop()}`)
+        currentPath === targetPath ||
+        currentPath.startsWith(`${targetPath}/`) ||
+        currentPath.includes(`/create/${lastSegment}`) ||
+        currentPath.includes(`/edit/${lastSegment}`)
       );
     },
-    [pathname, resolveHref]
+    [pathname]
   );
-  // Route protection
+
+  const isItemActive = useCallback(
+    (item) => isPathActive(resolveHref(item.href)),
+    [isPathActive, resolveHref]
+  );
+
+  const closeMobileSidebar = useCallback(() => {
+    if (typeof window !== "undefined" && window.innerWidth < 1024) {
+      toggleSidebar?.();
+    }
+  }, [toggleSidebar]);
+
+  const handleLogout = useCallback(async () => {
+    await logout();
+    router.push("/");
+  }, [logout, router]);
+
+  useEffect(() => {
+    setMounted(true);
+  }, []);
+
   useEffect(() => {
     if (!mounted || !user) return;
+
     if (!canOpenAdminUI) {
       router.replace("/");
       return;
     }
+
     if (isOwner && isBlocked(pathname)) {
       router.replace("/owner/dashboard");
     }
   }, [mounted, user, canOpenAdminUI, isOwner, pathname, isBlocked, router]);
 
-  // Close dropdowns when sidebar collapses
   useEffect(() => {
-    if (isCollapsed) {
-      setIsCreateOpen(false);
-      setIsTableOpen(false);
-      setCreateCatOpen(false);
-    }
+    if (!isCollapsed) return;
+
+    setIsCreateOpen(false);
+    setIsTableOpen(false);
+    setIsPaymentsOpen(false);
   }, [isCollapsed]);
 
-  // Close dropdowns on outside click
   useEffect(() => {
-    const onDocClick = (e) => {
-      if (dropdownRef.current && !dropdownRef.current.contains(e.target)) {
+    const handleOutsideClick = (event) => {
+      if (dropdownRef.current && !dropdownRef.current.contains(event.target)) {
         setIsCreateOpen(false);
         setIsTableOpen(false);
       }
     };
-    document.addEventListener("mousedown", onDocClick);
-    return () => document.removeEventListener("mousedown", onDocClick);
+
+    document.addEventListener("mousedown", handleOutsideClick);
+    return () => document.removeEventListener("mousedown", handleOutsideClick);
   }, []);
 
   if (!mounted || !canOpenAdminUI) return null;
 
-  const closeMobile = () => {
-    if (typeof window !== "undefined" && window.innerWidth < 1024) {
-      toggleSidebar?.();
-    }
-  };
-
-  const handleLogout = async () => {
-    await logout();
-    router.push("/");
-  };
-
-  // ── Reusable nav link ──
   const NavLink = ({
     href,
     icon: Icon,
@@ -290,38 +386,33 @@ export default function AdminSidebar({ isOpen, toggleSidebar, isCollapsed }) {
     active: forcedActive,
   }) => {
     if (isBlocked(href)) return null;
-    const finalHref = resolveHref(href);
-    const active =
-      forcedActive !== undefined
-        ? forcedActive
-        : finalHref
-        ? pathname.split("?")[0] === finalHref.split("?")[0] ||
-          pathname.startsWith(finalHref.split("?")[0] + "/")
-        : false;
 
-    const inner = (
+    const finalHref = resolveHref(href);
+    const active = forcedActive ?? isPathActive(finalHref);
+
+    const content = (
       <Link
         href={finalHref}
-        onClick={(e) => {
-          onClick?.(e);
-          closeMobile();
+        onClick={(event) => {
+          onClick?.(event);
+          closeMobileSidebar();
         }}
         className={cn(
-          "relative flex items-center rounded-xl transition-all duration-150 group",
+          "group relative flex items-center rounded-xl transition-all duration-150",
           isCollapsed
             ? "justify-center p-3"
-            : cn(
-                "gap-3 px-4 py-2.5",
-                subItem ? "pl-9 text-[13px]" : "text-[13.5px] font-medium"
-              ),
+            : subItem
+            ? "gap-3 px-4 py-2.5 pl-9 text-[13px]"
+            : "gap-3 px-4 py-2.5 text-[13.5px] font-medium",
           active
             ? "bg-indigo-50 text-indigo-700"
             : "text-slate-500 hover:bg-slate-50 hover:text-slate-800"
         )}
       >
         {active && (
-          <span className="absolute left-0 inset-y-1.5 w-[3px] bg-indigo-500 rounded-r-full" />
+          <span className="absolute inset-y-1.5 left-0 w-[3px] rounded-r-full bg-indigo-500" />
         )}
+
         {Icon && (
           <Icon
             size={subItem ? 14 : 18}
@@ -333,66 +424,101 @@ export default function AdminSidebar({ isOpen, toggleSidebar, isCollapsed }) {
             )}
           />
         )}
+
         {!isCollapsed && (
           <span className={cn(active && "font-semibold")}>{children}</span>
         )}
       </Link>
     );
 
-    if (isCollapsed) {
-      return <CollapseTooltip label={children}>{inner}</CollapseTooltip>;
-    }
-    return inner;
+    return isCollapsed ? (
+      <CollapseTooltip label={children}>{content}</CollapseTooltip>
+    ) : (
+      content
+    );
   };
 
-  // ── Dropdown trigger button ──
-  const DropdownButton = ({
-    onClick,
-    isOpen: open,
-    icon: Icon,
-    label,
-    variant = "dark",
-  }) => (
-    <button
-      onClick={onClick}
-      className={cn(
-        "w-full flex items-center justify-between px-4 py-2.5 rounded-xl",
-        "transition-all duration-150 active:scale-[0.98] text-[13.5px] font-semibold",
-        variant === "dark"
-          ? "bg-slate-900 text-white hover:bg-slate-800 shadow-sm"
-          : "bg-white border border-slate-200 text-slate-700 hover:bg-slate-50"
-      )}
-    >
-      <span className="flex items-center gap-2.5">
-        <Icon size={16} />
-        {label}
-      </span>
-      <ChevronDown
-        size={14}
-        className={cn(
-          "transition-transform duration-200 opacity-60",
-          open && "rotate-180"
-        )}
-      />
-    </button>
-  );
+  const renderLinkList = (links, closeMenu) =>
+    links.map((link) => (
+      <NavLink
+        key={link.name}
+        href={link.href}
+        icon={link.icon}
+        onClick={closeMenu}
+      >
+        {link.name}
+      </NavLink>
+    ));
 
-  // ── Section divider ──
-  const SectionLabel = ({ title }) =>
-    !isCollapsed ? (
-      <p className="px-4 mb-2 text-[10px] font-bold uppercase tracking-[0.18em] text-slate-400">
-        {title}
-      </p>
-    ) : (
-      <hr className="mx-3 border-slate-100 my-1" />
+  const renderPaymentsMenu = (item) => {
+    const active = item.subItems?.some((subItem) =>
+      isPathActive(resolveHref(subItem.href))
     );
 
-  const userInitial = user?.name?.charAt(0)?.toUpperCase() || "U";
-  const roleLabel = isOwner ? "Company Owner" : "Administrator";
+    if (isCollapsed) {
+      return (
+        <NavLink
+          key={item.name}
+          href={item.subItems?.[0]?.href}
+          icon={item.icon}
+          active={active}
+        >
+          {item.name}
+        </NavLink>
+      );
+    }
+
+    return (
+      <div key={item.name} className="space-y-1">
+        <button
+          onClick={() => setIsPaymentsOpen((prev) => !prev)}
+          className={cn(
+            "group flex w-full items-center justify-between rounded-xl px-4 py-2.5 transition-all duration-150",
+            isPaymentsOpen || active
+              ? "bg-slate-50 text-slate-900"
+              : "text-slate-500 hover:bg-slate-50"
+          )}
+        >
+          <div className="flex items-center gap-3">
+            <item.icon
+              size={18}
+              className={cn(
+                isPaymentsOpen || active ? "text-indigo-600" : "text-slate-400"
+              )}
+            />
+            <span className="text-[13.5px] font-medium">{item.name}</span>
+          </div>
+
+          <ChevronDown
+            size={14}
+            className={cn(
+              "transition-transform",
+              isPaymentsOpen && "rotate-180"
+            )}
+          />
+        </button>
+
+        <Collapsible isOpen={isPaymentsOpen}>
+          <div className="ml-6 mt-1 space-y-1 border-l-2 border-slate-100 pl-4">
+            {item.subItems.map((subItem) => (
+              <NavLink
+                key={subItem.name}
+                href={subItem.href}
+                icon={subItem.icon}
+                subItem
+                active={isPathActive(resolveHref(subItem.href))}
+              >
+                {subItem.name}
+              </NavLink>
+            ))}
+          </div>
+        </Collapsible>
+      </div>
+    );
+  };
 
   return (
     <>
-      {/* Mobile backdrop */}
       {isOpen && (
         <div
           className="fixed inset-0 z-40 bg-black/30 backdrop-blur-[2px] lg:hidden"
@@ -403,24 +529,24 @@ export default function AdminSidebar({ isOpen, toggleSidebar, isCollapsed }) {
 
       <aside
         className={cn(
-          "fixed inset-y-0 left-0 z-50 flex flex-col bg-white border-r border-slate-100",
+          "fixed inset-y-0 left-0 z-50 flex flex-col border-r border-slate-100 bg-white",
           "transition-[width,transform] duration-300 ease-in-out",
           "lg:static lg:translate-x-0",
           isOpen ? "translate-x-0" : "-translate-x-full lg:translate-x-0",
-          isCollapsed ? "lg:w-[72px] w-72" : "w-72"
+          isCollapsed ? "w-72 lg:w-[72px]" : "w-72"
         )}
       >
-        {/* ── Header ── */}
         <div
           className={cn(
-            "flex items-center h-[64px] border-b border-slate-100 shrink-0",
+            "flex h-[64px] shrink-0 items-center border-b border-slate-100",
             isCollapsed ? "justify-center px-0" : "justify-between px-5"
           )}
         >
           <div className="flex items-center gap-2.5">
-            <div className="flex items-center justify-center w-9 h-9 rounded-xl bg-indigo-600 shadow-md shadow-indigo-200 shrink-0">
+            <div className="flex h-9 w-9 shrink-0 items-center justify-center rounded-xl bg-indigo-600 shadow-md shadow-indigo-200">
               <ShieldCheck size={18} className="text-white" />
             </div>
+
             {!isCollapsed && (
               <span className="text-[17px] font-black tracking-tight text-slate-900">
                 Fix<span className="text-indigo-600">Admin</span>
@@ -428,11 +554,10 @@ export default function AdminSidebar({ isOpen, toggleSidebar, isCollapsed }) {
             )}
           </div>
 
-          {/* Mobile close */}
           {!isCollapsed && (
             <button
               onClick={toggleSidebar}
-              className="lg:hidden p-1.5 rounded-lg text-slate-400 hover:bg-slate-100 transition-colors"
+              className="rounded-lg p-1.5 text-slate-400 transition-colors hover:bg-slate-100 lg:hidden"
               aria-label="Close sidebar"
             >
               <X size={20} />
@@ -440,14 +565,12 @@ export default function AdminSidebar({ isOpen, toggleSidebar, isCollapsed }) {
           )}
         </div>
 
-        {/* ── Action Buttons (expanded only) ── */}
         {!isCollapsed && (
-          <div ref={dropdownRef} className="px-4 pt-5 pb-2 space-y-2 shrink-0">
-            {/* Create New */}
+          <div ref={dropdownRef} className="shrink-0 space-y-2 px-4 pt-5 pb-2">
             <div className="relative">
               <DropdownButton
                 onClick={() => {
-                  setIsCreateOpen((v) => !v);
+                  setIsCreateOpen((prev) => !prev);
                   setIsTableOpen(false);
                 }}
                 isOpen={isCreateOpen}
@@ -457,60 +580,16 @@ export default function AdminSidebar({ isOpen, toggleSidebar, isCollapsed }) {
               />
 
               <Collapsible isOpen={isCreateOpen}>
-                <div className="mt-1 bg-white border border-slate-100 rounded-xl shadow-md overflow-hidden">
-                  <NavLink
-                    href="/admin/create/users"
-                    icon={UserPlus}
-                    onClick={() => setIsCreateOpen(false)}
-                  >
-                    New User
-                  </NavLink>
-                  <NavLink
-                    href="/admin/create/company"
-                    icon={Company}
-                    onClick={() => setIsCreateOpen(false)}
-                  >
-                    New Company
-                  </NavLink>
-                  <NavLink
-                    href="/admin/create/provider"
-                    icon={HardHat}
-                    onClick={() => setIsCreateOpen(false)}
-                  >
-                    New Provider
-                  </NavLink>
-
-                  <NavLink
-                    href="/admin/create/categories"
-                    icon={Wrench}
-                    onClick={() => setIsCreateOpen(false)}
-                  >
-                    New Categories
-                  </NavLink>
-                  <NavLink
-                    href="/admin/create/types"
-                    icon={Wrench}
-                    onClick={() => setIsCreateOpen(false)}
-                  >
-                    New Types
-                  </NavLink>
-
-                  <NavLink
-                    href="/admin/create/service"
-                    icon={Wrench}
-                    onClick={() => setIsCreateOpen(false)}
-                  >
-                    New Service
-                  </NavLink>
+                <div className="mt-1 overflow-hidden rounded-xl border border-slate-100 bg-white shadow-md">
+                  {renderLinkList(CREATE_LINKS, () => setIsCreateOpen(false))}
                 </div>
               </Collapsible>
             </div>
 
-            {/* Manage Data */}
             <div className="relative">
               <DropdownButton
                 onClick={() => {
-                  setIsTableOpen((v) => !v);
+                  setIsTableOpen((prev) => !prev);
                   setIsCreateOpen(false);
                 }}
                 isOpen={isTableOpen}
@@ -520,72 +599,29 @@ export default function AdminSidebar({ isOpen, toggleSidebar, isCollapsed }) {
               />
 
               <Collapsible isOpen={isTableOpen}>
-                <div className="mt-1 bg-white border border-slate-100 rounded-xl shadow-md overflow-hidden max-h-72 overflow-y-auto">
-                  <NavLink
-                    href="/admin/users"
-                    icon={Users}
-                    onClick={() => setIsTableOpen(false)}
-                  >
-                    Users List
-                  </NavLink>
-                  <NavLink
-                    href="/admin/company"
-                    icon={Company}
-                    onClick={() => setIsTableOpen(false)}
-                  >
-                    Company List
-                  </NavLink>
-                  <NavLink
-                    href="/admin/categories"
-                    icon={Layers}
-                    onClick={() => setIsTableOpen(false)}
-                  >
-                    Category List
-                  </NavLink>
-                  <NavLink
-                    href="/admin/types"
-                    icon={Layers}
-                    onClick={() => setIsTableOpen(false)}
-                  >
-                    Type List
-                  </NavLink>
-                  <NavLink
-                    href={({ isOwner }) =>
-                      isOwner ? "/owner/services" : "/admin/services"
-                    }
-                    icon={TableProperties}
-                    onClick={() => setIsTableOpen(false)}
-                  >
-                    Services List
-                  </NavLink>
-                  <NavLink
-                    href="/admin/products"
-                    icon={Package}
-                    onClick={() => setIsTableOpen(false)}
-                  >
-                    Products List
-                  </NavLink>
+                <div className="mt-1 max-h-72 overflow-y-auto rounded-xl border border-slate-100 bg-white shadow-md">
+                  {renderLinkList(MANAGE_LINKS, () => setIsTableOpen(false))}
                 </div>
               </Collapsible>
             </div>
           </div>
         )}
 
-        {/* ── Collapsed quick actions ── */}
         {isCollapsed && (
-          <div className="flex flex-col items-center gap-1 px-2 pt-4 shrink-0">
+          <div className="flex shrink-0 flex-col items-center gap-1 px-2 pt-4">
             <CollapseTooltip label="Create New">
               <Link
                 href="/admin/create/users"
-                className="flex justify-center p-3 rounded-xl hover:bg-slate-50 text-slate-400 hover:text-slate-700 transition-colors"
+                className="flex justify-center rounded-xl p-3 text-slate-400 transition-colors hover:bg-slate-50 hover:text-slate-700"
               >
                 <Plus size={18} />
               </Link>
             </CollapseTooltip>
+
             <CollapseTooltip label="Manage Data">
               <Link
                 href="/admin/users"
-                className="flex justify-center p-3 rounded-xl hover:bg-slate-50 text-slate-400 hover:text-slate-700 transition-colors"
+                className="flex justify-center rounded-xl p-3 text-slate-400 transition-colors hover:bg-slate-50 hover:text-slate-700"
               >
                 <List size={18} />
               </Link>
@@ -593,73 +629,33 @@ export default function AdminSidebar({ isOpen, toggleSidebar, isCollapsed }) {
           </div>
         )}
 
-        {/* ── Navigation ── */}
-        <nav
-          className="flex-1 overflow-y-auto overflow-x-hidden py-4 px-3 space-y-5 scrollbar-hide"
-          aria-label="Main navigation"
-        >
+        <nav className="scrollbar-hide flex-1 space-y-5 overflow-x-hidden overflow-y-auto px-3 py-4">
           {NAV_GROUPS.map((group) => {
-            const items = group.items.filter((item) => {
-              if (isBlocked(item.href)) return false;
-              if (item.roles?.length) return hasAnyRole(user, item.roles);
-              return true;
-            });
+            const visibleItems = group.items.filter(
+              (item) => !isBlocked(item.href)
+            );
 
-            if (items.length === 0) return null;
+            if (visibleItems.length === 0) return null;
 
             return (
               <div key={group.title}>
-                <SectionLabel title={group.title} />
+                <SectionLabel title={group.title} isCollapsed={isCollapsed} />
 
                 <div className="space-y-0.5">
-                  {items.map((item) => {
-                    const active = isItemActive(item);
-                    const finalHref = resolveHref(item.href);
-
-                    const inner = (
-                      <Link
-                        key={item.name}
-                        href={finalHref}
-                        onClick={closeMobile}
-                        className={cn(
-                          "relative flex items-center rounded-xl transition-all duration-150 group",
-                          isCollapsed
-                            ? "justify-center p-3"
-                            : "gap-3 px-4 py-2.5 text-[13.5px] font-medium",
-                          active
-                            ? "bg-indigo-50 text-indigo-700"
-                            : "text-slate-500 hover:bg-slate-50 hover:text-slate-800"
-                        )}
-                      >
-                        {active && (
-                          <span className="absolute left-0 inset-y-1.5 w-[3px] bg-indigo-500 rounded-r-full" />
-                        )}
-                        <item.icon
-                          size={18}
-                          className={cn(
-                            "shrink-0 transition-colors",
-                            active
-                              ? "text-indigo-600"
-                              : "text-slate-400 group-hover:text-slate-600"
-                          )}
-                        />
-                        {!isCollapsed && (
-                          <span className={cn(active && "font-semibold")}>
-                            {item.name}
-                          </span>
-                        )}
-                      </Link>
-                    );
-
-                    if (isCollapsed) {
-                      return (
-                        <CollapseTooltip key={item.name} label={item.name}>
-                          {inner}
-                        </CollapseTooltip>
-                      );
+                  {visibleItems.map((item) => {
+                    if (item.subItems?.length) {
+                      return renderPaymentsMenu(item);
                     }
+
                     return (
-                      <React.Fragment key={item.name}>{inner}</React.Fragment>
+                      <NavLink
+                        key={item.name}
+                        href={item.href}
+                        icon={item.icon}
+                        active={isItemActive(item)}
+                      >
+                        {item.name}
+                      </NavLink>
                     );
                   })}
                 </div>
@@ -668,54 +664,53 @@ export default function AdminSidebar({ isOpen, toggleSidebar, isCollapsed }) {
           })}
         </nav>
 
-        {/* ── Footer ── */}
-        <div className="shrink-0 p-3 border-t border-slate-100">
-          {/* User card */}
+        <div className="shrink-0 border-t border-slate-100 p-3">
           <div
             className={cn(
-              "flex items-center rounded-xl bg-slate-50 border border-slate-100",
+              "flex items-center rounded-xl border border-slate-100 bg-slate-50",
               isCollapsed ? "justify-center p-2.5" : "gap-3 p-2.5"
             )}
           >
-            {/* Avatar */}
-            <div className="w-8 h-8 rounded-lg bg-indigo-100 border border-indigo-200 flex items-center justify-center text-sm font-black text-indigo-600 shrink-0">
+            <div className="flex h-8 w-8 shrink-0 items-center justify-center rounded-lg border border-indigo-200 bg-indigo-100 text-sm font-black text-indigo-600">
               {userInitial}
             </div>
 
             {!isCollapsed && (
               <>
-                <div className="flex-1 min-w-0">
-                  <p className="text-[13px] font-semibold text-slate-900 truncate leading-tight">
+                <div className="min-w-0 flex-1">
+                  <p className="truncate text-[13px] font-semibold leading-tight text-slate-900">
                     {user?.name}
                   </p>
-                  <p className="text-[10px] text-slate-400 font-medium uppercase tracking-wide mt-0.5">
+                  <p className="mt-0.5 text-[10px] font-medium uppercase tracking-wide text-slate-400">
                     {roleLabel}
                   </p>
                 </div>
 
-                <div className="flex items-center gap-1 shrink-0">
+                <div className="flex shrink-0 items-center gap-1">
                   {!isBlocked("/admin/notifications") && (
                     <Link
                       href="/admin/notifications"
-                      className="p-1.5 rounded-lg text-slate-400 hover:text-indigo-600 hover:bg-indigo-50 transition-colors"
+                      className="rounded-lg p-1.5 text-slate-400 transition-colors hover:bg-indigo-50 hover:text-indigo-600"
                       title="Notifications"
                     >
                       <Bell size={15} />
                     </Link>
                   )}
+
                   {!isBlocked("/admin/settings") && (
                     <Link
                       href="/admin/settings"
-                      className="p-1.5 rounded-lg text-slate-400 hover:text-indigo-600 hover:bg-indigo-50 transition-colors"
+                      className="rounded-lg p-1.5 text-slate-400 transition-colors hover:bg-indigo-50 hover:text-indigo-600"
                       title="Settings"
                     >
                       <Settings size={15} />
                     </Link>
                   )}
+
                   <button
                     onClick={handleLogout}
                     disabled={loading}
-                    className="p-1.5 rounded-lg text-slate-400 hover:text-rose-500 hover:bg-rose-50 transition-colors"
+                    className="rounded-lg p-1.5 text-slate-400 transition-colors hover:bg-rose-50 hover:text-rose-500"
                     title="Logout"
                   >
                     <LogOut size={15} />
@@ -725,34 +720,35 @@ export default function AdminSidebar({ isOpen, toggleSidebar, isCollapsed }) {
             )}
           </div>
 
-          {/* Collapsed icon row */}
           {isCollapsed && (
-            <div className="flex flex-col items-center gap-1 mt-2">
+            <div className="mt-2 flex flex-col items-center gap-1">
               {!isBlocked("/admin/notifications") && (
                 <CollapseTooltip label="Notifications">
                   <Link
                     href="/admin/notifications"
-                    className="p-2 rounded-lg text-slate-400 hover:text-indigo-600 hover:bg-indigo-50 transition-colors"
+                    className="rounded-lg p-2 text-slate-400 transition-colors hover:bg-indigo-50 hover:text-indigo-600"
                   >
                     <Bell size={16} />
                   </Link>
                 </CollapseTooltip>
               )}
+
               {!isBlocked("/admin/settings") && (
                 <CollapseTooltip label="Settings">
                   <Link
                     href="/admin/settings"
-                    className="p-2 rounded-lg text-slate-400 hover:text-indigo-600 hover:bg-indigo-50 transition-colors"
+                    className="rounded-lg p-2 text-slate-400 transition-colors hover:bg-indigo-50 hover:text-indigo-600"
                   >
                     <Settings size={16} />
                   </Link>
                 </CollapseTooltip>
               )}
+
               <CollapseTooltip label="Logout">
                 <button
                   onClick={handleLogout}
                   disabled={loading}
-                  className="p-2 rounded-lg text-slate-400 hover:text-rose-500 hover:bg-rose-50 transition-colors"
+                  className="rounded-lg p-2 text-slate-400 transition-colors hover:bg-rose-50 hover:text-rose-500"
                 >
                   <LogOut size={16} />
                 </button>

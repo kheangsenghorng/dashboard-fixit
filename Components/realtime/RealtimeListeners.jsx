@@ -5,6 +5,7 @@ import ServiceListener from "./ServiceListener";
 import OwnerListener from "./OwnerListener";
 import PublicOwnerCreatedListener from "./PublicOwnerCreatedListener";
 import CouponUsageListener from "./CouponUsageListener";
+import ServiceBookingListener from "./ServiceBookingListener";
 
 export default function RealtimeListeners() {
   return (
@@ -14,6 +15,7 @@ export default function RealtimeListeners() {
       <OwnerListener />
       <PublicOwnerCreatedListener />
       <CouponUsageListener />
+      <ServiceBookingListener/>
     </>
   );
 }
