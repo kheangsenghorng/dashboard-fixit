@@ -49,7 +49,9 @@ export const servicePaymentKhqrService = {
   checkBakongAccount: (accountId) =>
     api.post(
       "/payments/khqr/check-account",
-      { accountId },
+      {
+        bakong_account_id: accountId,
+      },
       {
         headers: { Accept: "application/json" },
       }

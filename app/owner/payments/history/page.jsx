@@ -1,4 +1,5 @@
-import BookingPaymentPage from "../../../../Components/company/payment/bookings/BookingsPayments";
+
+import BookingHistoryPage from "../../../../Components/company/payment/history/BookingsHistory";
 import AdminShell from "../../../admin/AdminShell";
 
 
@@ -10,7 +11,7 @@ export const metadata = {
 export default function Page() {
   return (
     <AdminShell>
-      <BookingPaymentPage />
+      <BookingHistoryPage />
     </AdminShell>
   );
 }

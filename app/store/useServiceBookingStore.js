@@ -37,18 +37,19 @@ export const useServiceBookingStore = create((set) => ({
   fetchServiceBookingsByOwner: async (ownerId, params = {}) => {
     try {
       set({ loading: true, error: null });
-
+  
       const response = await serviceBookingService.getByOwnerId(ownerId, params);
-
-      const bookings = response?.data?.data?.data || response?.data?.data || [];
-      const pagination =
-        response?.data?.data?.meta || response?.data?.meta || null;
-
+  
+      const bookings = response?.data?.data || [];
+      const pagination = response?.data?.pagination || null;
+  
       set({
         serviceBookings: bookings,
         pagination,
         loading: false,
       });
+  
+      return response.data;
     } catch (error) {
       set({
         error:
@@ -56,10 +57,12 @@ export const useServiceBookingStore = create((set) => ({
           "Failed to fetch owner service bookings",
         loading: false,
         serviceBookings: [],
+        pagination: null,
       });
+  
+      throw error;
     }
   },
-
   fetchServiceBooking: async (id) => {
     try {
       set({ loading: true, error: null });

@@ -33,6 +33,7 @@ import ContentLoader from "../../ContentLoader";
 import ServiceBookingListener from "../../realtime/ServiceBookingListener";
 import useServicePaymentKhqrStore from "../../../app/store/khqr/useServicePaymentKhqrStore";
 import PaymentCheckOverlay from "../../PaymentCheckOverlay";
+import PaymentListener from "../../realtime/PaymentListener";
 //mock daTa
 
 // ─── Helpers ──────────────────────────────────────────────────────────────────
@@ -472,6 +473,7 @@ export default function PaymentPage() {
     <div className="min-h-screen bg-slate-50/40 p-4 md:p-8 font-sans antialiased">
       <div className="max-w-7xl mx-auto space-y-6">
         <ServiceBookingListener />
+        <PaymentListener />
         {/* ── Header ── */}
         <div className="flex flex-col md:flex-row md:items-center justify-between gap-4">
           <div>
@@ -741,10 +743,30 @@ export default function PaymentPage() {
               {pagination?.total || serviceBookings.length} records
             </p>
             <div className="flex items-center gap-2">
-              <button className="h-7 px-3 rounded-lg border border-slate-200 bg-white text-[11px] font-medium shadow-sm hover:bg-slate-50 transition-colors text-slate-600">
+              <button
+                onClick={() =>
+                  fetchServiceBookings(pagination?.current_page - 1)
+                }
+                disabled={
+                  !pagination?.current_page || pagination.current_page <= 1
+                }
+                className="h-7 px-3 rounded-lg border border-slate-200 bg-white text-[11px] font-medium shadow-sm hover:bg-slate-50 transition-colors text-slate-600 disabled:opacity-40 disabled:cursor-not-allowed disabled:hover:bg-white"
+              >
                 Previous
               </button>
-              <button className="h-7 px-3 rounded-lg border border-slate-200 bg-white text-[11px] font-medium shadow-sm hover:bg-slate-50 transition-colors text-slate-600">
+              <span className="text-[11px] text-slate-500 font-medium px-1">
+                {pagination?.current_page ?? 1} / {pagination?.last_page ?? 1}
+              </span>
+              <button
+                onClick={() =>
+                  fetchServiceBookings(pagination?.current_page + 1)
+                }
+                disabled={
+                  !pagination?.current_page ||
+                  pagination.current_page >= pagination?.last_page
+                }
+                className="h-7 px-3 rounded-lg border border-slate-200 bg-white text-[11px] font-medium shadow-sm hover:bg-slate-50 transition-colors text-slate-600 disabled:opacity-40 disabled:cursor-not-allowed disabled:hover:bg-white"
+              >
                 Next
               </button>
             </div>

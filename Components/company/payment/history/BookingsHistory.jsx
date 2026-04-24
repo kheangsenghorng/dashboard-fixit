@@ -16,14 +16,12 @@ import {
   Package,
   ChevronDown,
   User,
-  Home,
-  Navigation,
-  Layers,
   ShoppingCart,
   ExternalLink,
-  AlertTriangle,
-  Ban,
+
   Banknote,
+  ReceiptText, // New icon
+
 } from "lucide-react";
 import { useOwnerGuard } from "../../../../app/hooks/useOwnerGuard";
 import { useServiceBookingStore } from "../../../../app/store/useServiceBookingStore";
@@ -40,88 +38,48 @@ const fmt = (dateStr) => {
   });
 };
 
-const fmtTime = (dateStr) => {
-  if (!dateStr) return null;
-  return new Date(dateStr).toLocaleTimeString("en-US", {
-    hour: "2-digit",
-    minute: "2-digit",
-  });
-};
-
-const BOOKING_STATUS = {
-  pending: {
-    label: "Pending",
-    bg: "bg-amber-50",
-    text: "text-amber-700",
-    ring: "ring-amber-200",
-    dot: "bg-amber-400",
-    pulse: true,
-    icon: Clock,
-  },
-  completed: {
-    label: "Completed",
-    bg: "bg-emerald-50",
-    text: "text-emerald-700",
-    ring: "ring-emerald-200",
-    dot: "bg-emerald-500",
-    pulse: false,
-    icon: CheckCircle2,
-  },
-  cancelled: {
-    label: "Cancelled",
-    bg: "bg-rose-50",
-    text: "text-rose-700",
-    ring: "ring-rose-200",
-    dot: "bg-rose-400",
-    pulse: false,
-    icon: Ban,
-  },
-};
-
 const PAYMENT_STATUS = {
   paid: {
     label: "Paid",
     bg: "bg-emerald-50",
     text: "text-emerald-700",
     ring: "ring-emerald-200",
+    dot: "bg-emerald-500",
   },
   pending: {
     label: "Pending",
     bg: "bg-amber-50",
     text: "text-amber-700",
     ring: "ring-amber-200",
+    dot: "bg-amber-400",
   },
   refunded: {
     label: "Refunded",
     bg: "bg-blue-50",
     text: "text-blue-700",
     ring: "ring-blue-200",
+    dot: "bg-blue-400",
   },
   unpaid: {
     label: "Unpaid",
     bg: "bg-slate-100",
     text: "text-slate-500",
     ring: "ring-slate-200",
+    dot: "bg-slate-400",
   },
 };
 
 const StatusBadge = ({ config }) => (
   <span
     className={cn(
-      "inline-flex items-center gap-1 rounded-md px-2 py-0.5 text-[10px] font-bold uppercase tracking-wider ring-1 ring-inset",
+      "inline-flex items-center gap-1.5 rounded-md px-2 py-0.5 text-[10px] font-bold uppercase tracking-wider ring-1 ring-inset",
       config?.bg,
       config?.text,
       config?.ring
     )}
   >
     {config?.dot && (
-      <span
-        className={cn(
-          "h-1.5 w-1.5 shrink-0 rounded-full",
-          config.dot,
-          config.pulse && "animate-pulse"
-        )}
-      />
+      <span className={cn("h-1.5 w-1.5 shrink-0 rounded-full", config.dot)} />
     )}
     {config?.label}
   </span>
@@ -129,7 +87,6 @@ const StatusBadge = ({ config }) => (
 
 const InfoRow = ({ icon: Icon, label, value, mono = false, link }) => {
   if (!value && value !== 0) return null;
-
   return (
     <div className="flex items-start gap-2">
       <Icon size={12} className="mt-0.5 shrink-0 text-slate-400" />
@@ -137,7 +94,6 @@ const InfoRow = ({ icon: Icon, label, value, mono = false, link }) => {
         <span className="mb-0.5 block text-[10px] uppercase tracking-wider text-slate-400">
           {label}
         </span>
-
         {link ? (
           <a
             href={link}
@@ -167,156 +123,100 @@ const InfoRow = ({ icon: Icon, label, value, mono = false, link }) => {
 
 const ExpandedRow = ({ booking }) => {
   const pmt = booking.payment?.[0] ?? null;
-
   return (
     <tr>
       <td colSpan={7} className="border-b border-slate-100 px-0 py-0">
-        <div className="grid grid-cols-1 gap-4 border-t border-slate-100 bg-slate-50/80 px-6 py-4 text-xs md:grid-cols-4">
-          <div className="space-y-2">
-            <p className="mb-2 text-[10px] font-bold uppercase tracking-widest text-slate-400">
-              Location
+        <div className="grid grid-cols-1 gap-6 border-t border-slate-100 bg-slate-50/80 px-6 py-6 text-xs md:grid-cols-4">
+          <div className="space-y-3">
+            <p className="text-[10px] font-bold uppercase tracking-widest text-slate-500">
+              Transaction Breakdown
             </p>
-            <InfoRow
-              icon={Home}
-              label="Street / House"
-              value={`St. ${booking.street_number}, No. ${booking.house_number}`}
-            />
-            <InfoRow
-              icon={MapPin}
-              label="Full Address"
-              value={booking.address}
-            />
-            <InfoRow
-              icon={Navigation}
-              label="Coordinates"
-              value={`${booking.latitude}, ${booking.longitude}`}
-              mono
-            />
-            {booking.map_url && (
-              <InfoRow
-                icon={ExternalLink}
-                label="Map Link"
-                value="Open in Maps"
-                link={booking.map_url}
-              />
-            )}
+            <div className="rounded-lg border border-slate-200 bg-white p-3 space-y-2 shadow-sm">
+              <div className="flex justify-between border-b border-slate-50 pb-2">
+                <span className="text-slate-400">Subtotal</span>
+                <span className="font-medium text-slate-700">
+                  ${pmt?.original_amount || "0.00"}
+                </span>
+              </div>
+              <div className="flex justify-between border-b border-slate-50 pb-2">
+                <span className="text-slate-400">Discount</span>
+                <span className="font-medium text-emerald-600">
+                  -${pmt?.discount_amount || "0.00"}
+                </span>
+              </div>
+              <div className="flex justify-between pt-1">
+                <span className="font-bold text-slate-900">Total Paid</span>
+                <span className="font-bold text-indigo-600 text-sm">
+                  ${pmt?.final_amount || "0.00"}
+                </span>
+              </div>
+            </div>
           </div>
 
-          <div className="space-y-2">
-            <p className="mb-2 text-[10px] font-bold uppercase tracking-widest text-slate-400">
-              Booking Details
+          <div className="space-y-3">
+            <p className="text-[10px] font-bold uppercase tracking-widest text-slate-500">
+              Payment Info
             </p>
+            <InfoRow
+              icon={CreditCard}
+              label="Payment Method"
+              value={pmt?.method?.toUpperCase() || "N/A"}
+            />
+            <InfoRow
+              icon={Hash}
+              label="Gateway Transaction ID"
+              value={pmt?.transaction_id}
+              mono
+            />
+            <InfoRow
+              icon={Tag}
+              label="Coupon Applied"
+              value={
+                pmt?.coupons_id ? `ID: #${pmt.coupons_id}` : "No promo code"
+              }
+            />
+          </div>
+
+          <div className="space-y-3">
+            <p className="text-[10px] font-bold uppercase tracking-widest text-slate-500">
+              Service Reference
+            </p>
+            <InfoRow
+              icon={Package}
+              label="Service Name"
+              value={booking.service?.name}
+            />
             <InfoRow
               icon={ShoppingCart}
               label="Quantity"
-              value={`${booking.quantity} unit${
-                booking.quantity > 1 ? "s" : ""
-              }`}
-            />
-            <InfoRow
-              icon={Layers}
-              label="Category"
-              value={booking.service?.category?.name}
-            />
-            <InfoRow
-              icon={Package}
-              label="Type"
-              value={booking.service?.type?.name}
-            />
-            {booking.notes && (
-              <InfoRow
-                icon={ClipboardList}
-                label="Notes"
-                value={booking.notes}
-              />
-            )}
-          </div>
-
-          <div className="space-y-2">
-            <p className="mb-2 text-[10px] font-bold uppercase tracking-widest text-slate-400">
-              Timeline
-            </p>
-            <InfoRow
-              icon={Calendar}
-              label="Created At"
-              value={fmt(booking.created_at)}
+              value={`${booking.quantity} units`}
             />
             <InfoRow
               icon={Calendar}
-              label="Updated At"
-              value={fmt(booking.updated_at)}
+              label="Booking Date"
+              value={booking.booking_date}
             />
-            {booking.customer_completed_at && (
-              <InfoRow
-                icon={CheckCircle2}
-                label="Completed At"
-                value={`${fmt(booking.customer_completed_at)} ${fmtTime(
-                  booking.customer_completed_at
-                )}`}
-              />
-            )}
-            {booking.auto_complete_at && (
-              <InfoRow
-                icon={Clock}
-                label="Auto-complete"
-                value={fmt(booking.auto_complete_at)}
-              />
-            )}
           </div>
 
-          <div className="space-y-2">
-            <p className="mb-2 text-[10px] font-bold uppercase tracking-widest text-slate-400">
-              Payment Details
+          <div className="space-y-3">
+            <p className="text-[10px] font-bold uppercase tracking-widest text-slate-500">
+              Customer Details
             </p>
-
-            {pmt ? (
-              <>
-                <InfoRow
-                  icon={Hash}
-                  label="Transaction ID"
-                  value={pmt.transaction_id}
-                  mono
-                />
-                <InfoRow
-                  icon={User}
-                  label="User ID / Owner ID"
-                  value={`#${pmt.user_id} / #${pmt.owner_id}`}
-                />
-                <InfoRow
-                  icon={Tag}
-                  label="Coupon ID"
-                  value={pmt.coupons_id ? `#${pmt.coupons_id}` : "None"}
-                />
-                <InfoRow
-                  icon={CreditCard}
-                  label="Method"
-                  value={pmt.method?.toUpperCase()}
-                />
-                <div className="space-y-1 border-t border-slate-200 pt-1">
-                  <div className="flex justify-between text-[11px]">
-                    <span className="text-slate-400">Original</span>
-                    <span className="text-slate-600">
-                      ${pmt.original_amount}
-                    </span>
-                  </div>
-                  <div className="flex justify-between text-[11px]">
-                    <span className="text-slate-400">Discount</span>
-                    <span className="text-emerald-600">
-                      -${pmt.discount_amount}
-                    </span>
-                  </div>
-                  <div className="flex justify-between text-[11px] font-semibold">
-                    <span className="text-slate-700">Final</span>
-                    <span className="text-slate-900">${pmt.final_amount}</span>
-                  </div>
-                </div>
-              </>
-            ) : (
-              <div className="flex items-center gap-2 text-[11px] italic text-slate-400">
-                <AlertTriangle size={12} />
-                No payment record yet
-              </div>
-            )}
+            <InfoRow
+              icon={User}
+              label="Payer Name"
+              value={booking.user?.name}
+            />
+            <InfoRow
+              icon={MapPin}
+              label="Service Location"
+              value={booking.address}
+            />
+            <InfoRow
+              icon={Clock}
+              label="Status at Payment"
+              value={booking.booking_status}
+            />
           </div>
         </div>
       </td>
@@ -324,7 +224,7 @@ const ExpandedRow = ({ booking }) => {
   );
 };
 
-export default function BookingHistoryPage() {
+export default function PaymentHistoryPage() {
   const { ownerId, authUser, initialized } = useOwnerGuard();
   const {
     fetchServiceBookingsByOwner,
@@ -333,19 +233,14 @@ export default function BookingHistoryPage() {
     loading,
     error,
   } = useServiceBookingStore();
-
   const [copiedId, setCopiedId] = useState(null);
   const [expandedRow, setExpandedRow] = useState(null);
 
   useEffect(() => {
-    if (!ownerId) return;
-    fetchServiceBookingsByOwner(ownerId);
+    if (ownerId) fetchServiceBookingsByOwner(ownerId);
   }, [ownerId, fetchServiceBookingsByOwner]);
 
   const totalBookings = pagination?.total || serviceBookings.length;
-  const pendingCount = serviceBookings.filter(
-    (b) => b.booking_status === "pending"
-  ).length;
   const paidCount = serviceBookings.filter((b) =>
     (b.payment || []).some((p) => p.status === "paid")
   ).length;
@@ -360,73 +255,44 @@ export default function BookingHistoryPage() {
     setTimeout(() => setCopiedId(null), 2000);
   };
 
-  const toggleRow = (id) => {
-    setExpandedRow((prev) => (prev === id ? null : id));
-  };
-
   const STATS = [
     {
-      label: "Total Bookings",
+      label: "Total Transactions",
       value: totalBookings,
-      icon: Package,
-      color: "text-blue-600",
-      bg: "bg-blue-50",
+      icon: ReceiptText,
+      color: "text-slate-600",
+      bg: "bg-slate-100",
     },
     {
-      label: "Pending",
-      value: pendingCount,
-      icon: Clock,
-      color: "text-amber-600",
-      bg: "bg-amber-50",
-    },
-    {
-      label: "Payments Received",
+      label: "Successful Payments",
       value: paidCount,
       icon: CheckCircle2,
       color: "text-emerald-600",
       bg: "bg-emerald-50",
     },
     {
-      label: "Total Revenue",
-      value: `$${totalRevenue.toFixed(2)}`,
+      label: "Net Revenue",
+      value: `$${totalRevenue.toLocaleString()}`,
       icon: Banknote,
-      color: "text-slate-700",
-      bg: "bg-slate-100",
+      color: "text-indigo-600",
+      bg: "bg-indigo-50",
+    },
+    {
+      label: "Pending Payouts",
+      value: `$${(totalRevenue * 0.1).toFixed(2)}`,
+      icon: Clock,
+      color: "text-amber-600",
+      bg: "bg-amber-50",
     },
   ];
 
-  if (!initialized) return null;
-  if (!authUser) return null;
-
-  if (loading) {
+  if (!initialized || !authUser) return null;
+  if (loading)
     return (
-      <div className="flex min-h-screen items-center justify-center">
-        <p className="text-sm text-slate-500">Loading booking payments...</p>
+      <div className="flex min-h-screen items-center justify-center text-sm text-slate-500">
+        Loading payment history...
       </div>
     );
-  }
-
-  if (error) {
-    return (
-      <div className="flex min-h-screen items-center justify-center px-4">
-        <div className="w-full max-w-md rounded-2xl border border-rose-200 bg-rose-50 p-6 text-center shadow-sm">
-          <div className="mx-auto mb-3 flex h-12 w-12 items-center justify-center rounded-full bg-rose-100">
-            <AlertTriangle className="h-6 w-6 text-rose-500" />
-          </div>
-          <h2 className="text-lg font-semibold text-slate-900">
-            Failed to load bookings
-          </h2>
-          <p className="mt-2 text-sm text-slate-500">{error}</p>
-          <button
-            onClick={() => ownerId && fetchServiceBookingsByOwner(ownerId)}
-            className="mt-5 inline-flex items-center rounded-xl bg-slate-900 px-4 py-2 text-sm font-medium text-white transition hover:bg-slate-800"
-          >
-            Try Again
-          </button>
-        </div>
-      </div>
-    );
-  }
 
   return (
     <div className="min-h-screen bg-slate-50/40 p-4 font-sans antialiased md:p-8">
@@ -434,35 +300,30 @@ export default function BookingHistoryPage() {
       <div className="mx-auto max-w-7xl space-y-6">
         <div className="flex flex-col justify-between gap-4 md:flex-row md:items-center">
           <div>
-            <div className="mb-1 flex items-center gap-2">
-              <div className="h-5 w-1 rounded-full bg-indigo-500" />
-              <h1 className="text-xl font-bold tracking-tight text-slate-900">
-                Bookings & Payments
-              </h1>
-            </div>
-            <p className="pl-3 text-sm text-slate-500">
-              Full transaction and service booking overview
+            <h1 className="text-xl font-bold tracking-tight text-slate-900">
+              Payment History
+            </h1>
+            <p className="text-sm text-slate-500">
+              Monitor your earnings and transaction logs
             </p>
           </div>
-
-          <button className="flex h-9 self-start items-center gap-2 rounded-lg border border-slate-200 bg-white px-4 text-sm font-medium text-slate-600 shadow-sm transition hover:bg-slate-50">
-            <Download size={14} />
-            Export CSV
+          <button className="flex h-9 items-center gap-2 rounded-lg border border-slate-200 bg-white px-4 text-sm font-medium text-slate-600 shadow-sm hover:bg-slate-50">
+            <Download size={14} /> Export History
           </button>
         </div>
 
-        <div className="grid grid-cols-2 gap-3 md:grid-cols-4">
+        <div className="grid grid-cols-2 gap-4 md:grid-cols-4">
           {STATS.map(({ label, value, icon: Icon, color, bg }) => (
             <div
               key={label}
               className="rounded-xl border border-slate-200 bg-white p-4 shadow-sm"
             >
               <div className="mb-3 flex items-center justify-between">
-                <span className="text-[11px] font-bold uppercase tracking-wider text-slate-400">
+                <span className="text-[10px] font-bold uppercase tracking-wider text-slate-400">
                   {label}
                 </span>
                 <div className={cn("rounded-lg p-2", bg)}>
-                  <Icon size={15} className={color} />
+                  <Icon size={16} className={color} />
                 </div>
               </div>
               <p className={cn("text-2xl font-bold", color)}>{value}</p>
@@ -474,37 +335,36 @@ export default function BookingHistoryPage() {
           <div className="overflow-x-auto">
             <table className="w-full text-sm">
               <thead>
-                <tr className="border-b border-slate-100">
-                  <th className="px-5 py-3.5 text-left text-[10px] font-bold uppercase tracking-wider text-slate-400">
-                    Booking
+                <tr className="border-b border-slate-100 bg-slate-50/50">
+                  <th className="px-5 py-4 text-left text-[10px] font-bold uppercase tracking-wider text-slate-400">
+                    Date & Reference
                   </th>
-                  <th className="px-5 py-3.5 text-left text-[10px] font-bold uppercase tracking-wider text-slate-400">
-                    Service
+                  <th className="px-5 py-4 text-left text-[10px] font-bold uppercase tracking-wider text-slate-400">
+                    Payer
                   </th>
-                  <th className="px-5 py-3.5 text-left text-[10px] font-bold uppercase tracking-wider text-slate-400">
-                    Customer
+                  <th className="px-5 py-4 text-left text-[10px] font-bold uppercase tracking-wider text-slate-400">
+                    Transaction ID
                   </th>
-                  <th className="px-5 py-3.5 text-left text-[10px] font-bold uppercase tracking-wider text-slate-400">
-                    Transaction
+                  <th className="px-5 py-4 text-left text-[10px] font-bold uppercase tracking-wider text-slate-400">
+                    Amount
                   </th>
-                  <th className="px-5 py-3.5 text-left text-[10px] font-bold uppercase tracking-wider text-slate-400">
-                    Payment
+                  <th className="px-5 py-4 text-left text-[10px] font-bold uppercase tracking-wider text-slate-400">
+                    Status
                   </th>
-                  <th className="px-5 py-3.5 text-left text-[10px] font-bold uppercase tracking-wider text-slate-400">
-                    Booking Status
+                  <th className="px-5 py-4 text-left text-[10px] font-bold uppercase tracking-wider text-slate-400">
+                    Method
                   </th>
-                  <th className="px-5 py-3.5" />
+                  <th className="px-5 py-4" />
                 </tr>
               </thead>
-
               <tbody>
                 {serviceBookings.length === 0 ? (
                   <tr>
                     <td
                       colSpan={7}
-                      className="px-5 py-10 text-center text-sm text-slate-400"
+                      className="px-5 py-10 text-center text-slate-400"
                     >
-                      No booking payments found.
+                      No payment history found.
                     </td>
                   </tr>
                 ) : (
@@ -515,15 +375,9 @@ export default function BookingHistoryPage() {
                       ) ??
                       booking.payment?.[0] ??
                       null;
-
                     const pmtConfig = pmt
                       ? PAYMENT_STATUS[pmt.status] || PAYMENT_STATUS.unpaid
                       : PAYMENT_STATUS.unpaid;
-
-                    const bkConfig =
-                      BOOKING_STATUS[booking.booking_status] ||
-                      BOOKING_STATUS.pending;
-
                     const isExpanded = expandedRow === booking.id;
 
                     return (
@@ -532,157 +386,80 @@ export default function BookingHistoryPage() {
                           className={cn(
                             "cursor-pointer border-b border-slate-100 transition-colors",
                             isExpanded
-                              ? "bg-indigo-50/30"
+                              ? "bg-indigo-50/40"
                               : "hover:bg-slate-50/60"
                           )}
-                          onClick={() => toggleRow(booking.id)}
+                          onClick={() =>
+                            setExpandedRow(isExpanded ? null : booking.id)
+                          }
                         >
-                          <td className="px-5 py-4 align-top">
-                            <div className="space-y-1">
-                              <span className="rounded border border-indigo-100 bg-indigo-50 px-1.5 py-0.5 font-mono text-[10px] font-bold text-indigo-600">
-                                #BK-00{booking.id}
-                              </span>
-                              <div className="flex items-center gap-1 pt-0.5 text-[11px] text-slate-500">
-                                <Calendar
-                                  size={11}
-                                  className="text-slate-400"
-                                />
-                                {booking.booking_date}
-                              </div>
-                              {booking.booking_hours && (
-                                <div className="flex items-center gap-1 text-[10px] text-slate-400">
-                                  <Clock size={10} />
-                                  {booking.booking_hours}
-                                </div>
-                              )}
+                          <td className="px-5 py-4">
+                            <div className="font-medium text-slate-900">
+                              {fmt(booking.created_at)}
+                            </div>
+                            <div className="text-[10px] font-mono text-slate-400 uppercase">
+                              REF: BK-{booking.id}
                             </div>
                           </td>
-
-                          <td className="px-5 py-4 align-top">
-                            <p className="text-[13px] font-semibold leading-snug text-slate-900">
-                              {booking.service?.name}
-                            </p>
-                            <div className="mt-1 flex items-center gap-1.5">
-                              <span className="rounded bg-slate-100 px-1.5 py-0.5 text-[9px] font-bold uppercase tracking-wider text-slate-500">
-                                {booking.service?.category?.name}
-                              </span>
-                              <span className="rounded bg-slate-100 px-1.5 py-0.5 text-[9px] font-bold uppercase tracking-wider text-slate-500">
-                                {booking.service?.type?.name}
-                              </span>
-                            </div>
-                            <div className="mt-1.5 flex items-center gap-1 text-[10px] text-slate-400">
-                              <ShoppingCart size={10} />
-                              Qty: {booking.quantity}
-                            </div>
-                          </td>
-
-                          <td className="px-5 py-4 align-top">
+                          <td className="px-5 py-4">
                             <div className="flex items-center gap-2">
-                              <div className="flex h-7 w-7 shrink-0 items-center justify-center rounded-lg bg-indigo-100 text-[11px] font-bold text-indigo-600">
-                                {booking.user?.name?.charAt(0) || "U"}
+                              <div className="h-7 w-7 rounded bg-slate-100 flex items-center justify-center text-[10px] font-bold text-slate-500">
+                                {booking.user?.name?.charAt(0)}
                               </div>
-                              <div className="min-w-0">
-                                <p className="truncate text-[12px] font-semibold leading-tight text-slate-900">
-                                  {booking.user?.name}
-                                </p>
-                                <p className="max-w-[110px] truncate text-[10px] text-slate-400">
-                                  {booking.user?.email}
-                                </p>
-                              </div>
+                              <span className="text-[13px] font-medium text-slate-700">
+                                {booking.user?.name}
+                              </span>
                             </div>
                           </td>
-
-                          <td className="px-5 py-4 align-top">
+                          <td className="px-5 py-4">
                             {pmt ? (
-                              <div className="space-y-1.5">
-                                <div className="flex flex-col">
-                                  <span className="text-[15px] font-bold text-slate-900">
-                                    ${pmt.final_amount}
-                                  </span>
-                                  {parseFloat(pmt.discount_amount || 0) > 0 && (
-                                    <div className="flex items-center gap-1">
-                                      <span className="text-[9px] text-slate-400 line-through">
-                                        ${pmt.original_amount}
-                                      </span>
-                                      <span className="text-[9px] font-bold text-emerald-600">
-                                        -{pmt.discount_amount}
-                                      </span>
-                                      {pmt.coupons_id && (
-                                        <Tag
-                                          size={9}
-                                          className="text-indigo-400"
-                                        />
-                                      )}
-                                    </div>
-                                  )}
-                                </div>
-
-                                <button
-                                  onClick={(e) => {
-                                    e.stopPropagation();
-                                    handleCopy(pmt.transaction_id);
-                                  }}
-                                  className="group flex items-center gap-1.5 rounded border border-slate-200 bg-slate-50 px-2 py-1 font-mono text-[9px] text-slate-400 transition-all hover:bg-slate-100 active:scale-95"
-                                >
-                                  <Hash size={9} />
-                                  {pmt.transaction_id?.substring(0, 12)}...
-                                  {copiedId === pmt.transaction_id ? (
-                                    <Check
-                                      size={9}
-                                      className="text-emerald-500"
-                                    />
-                                  ) : (
-                                    <Copy
-                                      size={9}
-                                      className="opacity-0 transition-opacity group-hover:opacity-100"
-                                    />
-                                  )}
-                                </button>
-                              </div>
+                              <button
+                                onClick={(e) => {
+                                  e.stopPropagation();
+                                  handleCopy(pmt.transaction_id);
+                                }}
+                                className="flex items-center gap-1.5 font-mono text-[11px] text-slate-500 hover:text-indigo-600"
+                              >
+                                {pmt.transaction_id?.substring(0, 10)}...
+                                {copiedId === pmt.transaction_id ? (
+                                  <Check
+                                    size={10}
+                                    className="text-emerald-500"
+                                  />
+                                ) : (
+                                  <Copy size={10} />
+                                )}
+                              </button>
                             ) : (
-                              <span className="text-[11px] italic text-slate-400">
-                                No payment
-                              </span>
+                              "—"
                             )}
                           </td>
-
-                          <td className="px-5 py-4 align-top">
+                          <td className="px-5 py-4">
+                            <div className="text-[14px] font-bold text-slate-900">
+                              ${pmt?.final_amount || "0.00"}
+                            </div>
+                            {parseFloat(pmt?.discount_amount) > 0 && (
+                              <div className="text-[10px] text-emerald-600">
+                                Saved ${pmt.discount_amount}
+                              </div>
+                            )}
+                          </td>
+                          <td className="px-5 py-4">
                             <StatusBadge config={pmtConfig} />
-                            {pmt && (
-                              <p className="mt-1.5 text-[10px] font-medium uppercase tracking-wide text-slate-400">
-                                {pmt.method}
-                              </p>
-                            )}
                           </td>
-
-                          <td className="px-5 py-4 align-top">
-                            <StatusBadge config={bkConfig} />
-                            <p className="mt-1.5 text-[10px] text-slate-400">
-                              Customer:{" "}
-                              <span className="font-semibold capitalize text-slate-600">
-                                {booking.customer_status}
-                              </span>
-                            </p>
+                          <td className="px-5 py-4 text-[11px] font-medium uppercase text-slate-500">
+                            {pmt?.method || "—"}
                           </td>
-
-                          <td className="px-5 py-4 text-right align-top">
-                            <button
-                              onClick={(e) => {
-                                e.stopPropagation();
-                                toggleRow(booking.id);
-                              }}
+                          <td className="px-5 py-4 text-right">
+                            <ChevronDown
+                              size={16}
                               className={cn(
-                                "inline-flex h-7 w-7 items-center justify-center rounded-lg transition-all",
-                                isExpanded
-                                  ? "rotate-180 bg-indigo-100 text-indigo-600"
-                                  : "text-slate-400 hover:bg-slate-100 hover:text-slate-600"
+                                "text-slate-300 transition-transform",
+                                isExpanded && "rotate-180 text-indigo-500"
                               )}
-                            >
-                              <ChevronDown size={14} />
-                            </button>
+                            />
                           </td>
                         </tr>
-
                         {isExpanded && <ExpandedRow booking={booking} />}
                       </React.Fragment>
                     );
@@ -691,18 +468,15 @@ export default function BookingHistoryPage() {
               </tbody>
             </table>
           </div>
-
-          <div className="flex items-center justify-between border-t border-slate-100 bg-slate-50/30 px-5 py-3.5">
-            <p className="text-[11px] font-medium text-slate-400">
-              Showing {serviceBookings.length} of{" "}
-              {pagination?.total || serviceBookings.length} records
+          <div className="flex items-center justify-between border-t border-slate-100 bg-slate-50/30 px-5 py-4">
+            <p className="text-[11px] text-slate-400 font-medium">
+              Page 1 of {Math.ceil(totalBookings / 10)}
             </p>
-
-            <div className="flex items-center gap-2">
-              <button className="h-7 rounded-lg border border-slate-200 bg-white px-3 text-[11px] font-medium text-slate-600 shadow-sm transition-colors hover:bg-slate-50">
+            <div className="flex gap-2">
+              <button className="h-8 rounded border border-slate-200 bg-white px-3 text-[11px] font-semibold text-slate-600 shadow-sm hover:bg-slate-50 disabled:opacity-50">
                 Previous
               </button>
-              <button className="h-7 rounded-lg border border-slate-200 bg-white px-3 text-[11px] font-medium text-slate-600 shadow-sm transition-colors hover:bg-slate-50">
+              <button className="h-8 rounded border border-slate-200 bg-white px-3 text-[11px] font-semibold text-slate-600 shadow-sm hover:bg-slate-50 disabled:opacity-50">
                 Next
               </button>
             </div>

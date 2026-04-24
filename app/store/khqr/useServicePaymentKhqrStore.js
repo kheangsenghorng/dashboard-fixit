@@ -1,7 +1,6 @@
 import { create } from "zustand";
 import { servicePaymentKhqrService } from "../../services/khqr/servicePaymentKhqrService";
 
-
 const useServicePaymentKhqrStore = create((set) => ({
   loading: false,
   error: null,
@@ -12,8 +11,9 @@ const useServicePaymentKhqrStore = create((set) => ({
     try {
       set({ loading: true, error: null });
 
-      const response =
-        await servicePaymentKhqrService.generateIndividualKhqr(data);
+      const response = await servicePaymentKhqrService.generateIndividualKhqr(
+        data
+      );
 
       set({
         khqrResult: response.data,
@@ -23,9 +23,9 @@ const useServicePaymentKhqrStore = create((set) => ({
     } catch (error) {
       set({
         error:
-          error.response?.data?.message ||
-          "Failed to generate individual KHQR",
+          error.response?.data?.message || "Failed to generate individual KHQR",
       });
+
       throw error;
     } finally {
       set({ loading: false });
@@ -36,8 +36,9 @@ const useServicePaymentKhqrStore = create((set) => ({
     try {
       set({ loading: true, error: null });
 
-      const response =
-        await servicePaymentKhqrService.generateMerchantKhqr(data);
+      const response = await servicePaymentKhqrService.generateMerchantKhqr(
+        data
+      );
 
       set({
         khqrResult: response.data,
@@ -47,9 +48,9 @@ const useServicePaymentKhqrStore = create((set) => ({
     } catch (error) {
       set({
         error:
-          error.response?.data?.message ||
-          "Failed to generate merchant KHQR",
+          error.response?.data?.message || "Failed to generate merchant KHQR",
       });
+
       throw error;
     } finally {
       set({ loading: false });
@@ -60,16 +61,14 @@ const useServicePaymentKhqrStore = create((set) => ({
     try {
       set({ loading: true, error: null });
 
-      const response =
-        await servicePaymentKhqrService.generateKhqrImage(data);
+      const response = await servicePaymentKhqrService.generateKhqrImage(data);
 
       return response.data;
     } catch (error) {
       set({
-        error:
-          error.response?.data?.message ||
-          "Failed to generate KHQR image",
+        error: error.response?.data?.message || "Failed to generate KHQR image",
       });
+
       throw error;
     } finally {
       set({ loading: false });
@@ -80,16 +79,14 @@ const useServicePaymentKhqrStore = create((set) => ({
     try {
       set({ loading: true, error: null });
 
-      const response =
-        await servicePaymentKhqrService.generateDeeplink(data);
+      const response = await servicePaymentKhqrService.generateDeeplink(data);
 
       return response.data;
     } catch (error) {
       set({
-        error:
-          error.response?.data?.message ||
-          "Failed to generate deeplink",
+        error: error.response?.data?.message || "Failed to generate deeplink",
       });
+
       throw error;
     } finally {
       set({ loading: false });
@@ -100,8 +97,9 @@ const useServicePaymentKhqrStore = create((set) => ({
     try {
       set({ loading: true, error: null });
 
-      const response =
-        await servicePaymentKhqrService.checkTransactionByMd5(md5);
+      const response = await servicePaymentKhqrService.checkTransactionByMd5(
+        md5
+      );
 
       set({
         transactionResult: response.data,
@@ -111,9 +109,9 @@ const useServicePaymentKhqrStore = create((set) => ({
     } catch (error) {
       set({
         error:
-          error.response?.data?.message ||
-          "Failed to check transaction by MD5",
+          error.response?.data?.message || "Failed to check transaction by MD5",
       });
+
       throw error;
     } finally {
       set({ loading: false });
@@ -124,8 +122,9 @@ const useServicePaymentKhqrStore = create((set) => ({
     try {
       set({ loading: true, error: null });
 
-      const response =
-        await servicePaymentKhqrService.checkTransactionByHash(hash);
+      const response = await servicePaymentKhqrService.checkTransactionByHash(
+        hash
+      );
 
       set({
         transactionResult: response.data,
@@ -138,6 +137,7 @@ const useServicePaymentKhqrStore = create((set) => ({
           error.response?.data?.message ||
           "Failed to check transaction by hash",
       });
+
       throw error;
     } finally {
       set({ loading: false });
@@ -148,16 +148,23 @@ const useServicePaymentKhqrStore = create((set) => ({
     try {
       set({ loading: true, error: null });
 
-      const response =
-        await servicePaymentKhqrService.checkBakongAccount(accountId);
+      const response = await servicePaymentKhqrService.checkBakongAccount(
+        accountId
+      );
+
+      console.log("Bakong account check response:", response.data);
 
       return response.data;
     } catch (error) {
+      console.log("Bakong account check error:", error.response?.data);
+
       set({
         error:
           error.response?.data?.message ||
+          error.response?.data?.errors?.bakong_account_id?.[0] ||
           "Failed to check Bakong account",
       });
+
       throw error;
     } finally {
       set({ loading: false });
@@ -167,22 +174,22 @@ const useServicePaymentKhqrStore = create((set) => ({
   checkTransactionByExternalRef: async (externalRef) => {
     try {
       set({ loading: true, error: null });
-  
+
       const response =
         await servicePaymentKhqrService.checkTransactionByExternalRef(
           externalRef
         );
-  
+
       const result = response?.data?.data;
-  
+
       set({
         transactionResult: result,
       });
-  
+
       return result;
     } catch (error) {
       console.log("KHQR check error:", error.response?.data);
-  
+
       set({
         error:
           error?.response?.data?.data?.responseMessage ||
@@ -190,7 +197,7 @@ const useServicePaymentKhqrStore = create((set) => ({
           error?.response?.data?.message ||
           "Failed to check transaction by external reference",
       });
-  
+
       throw error;
     } finally {
       set({ loading: false });
@@ -200,6 +207,7 @@ const useServicePaymentKhqrStore = create((set) => ({
   clearKhqrResult: () => {
     set({
       khqrResult: null,
+      error: null,
     });
   },
 

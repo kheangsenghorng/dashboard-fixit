@@ -76,7 +76,12 @@ const NAV_GROUPS = [
     items: [
       { name: "Customers", href: "/admin/users", icon: Users },
       { name: "Company", href: "/admin/company", icon: Company },
-      { name: "Service Providers", href: "/admin/providers", icon: HardHat },
+      {
+        name: "Service Providers",
+        href: ({ isOwner }) =>
+          isOwner ? "/owner/providers" : "/admin/providers",
+        icon: HardHat,
+      },
     ],
   },
   {
@@ -109,7 +114,7 @@ const NAV_GROUPS = [
           {
             name: "Booking History",
             href: ({ isOwner }) =>
-              isOwner ? "/owner/history/bookings" : "/admin/history/bookings",
+              isOwner ? "/owner/payments/history" : "/admin/payments/history",
             icon: History,
           },
           {
@@ -297,6 +302,7 @@ export default function AdminSidebar({ isOpen, toggleSidebar, isCollapsed }) {
       if (!isOwner) return false;
 
       const href = resolveHref(hrefOrFn)?.split("?")[0];
+
       return OWNER_BLOCKED_ROUTES.some(
         (route) => href === route || href?.startsWith(`${route}/`)
       );
@@ -363,6 +369,21 @@ export default function AdminSidebar({ isOpen, toggleSidebar, isCollapsed }) {
     setIsPaymentsOpen(false);
   }, [isCollapsed]);
 
+  // Keep Payments submenu open when current route is one of its subItems
+  useEffect(() => {
+    const paymentsItem = NAV_GROUPS.flatMap((group) => group.items).find(
+      (item) => item.name === "Payments"
+    );
+
+    const isPaymentsRoute = paymentsItem?.subItems?.some((subItem) =>
+      isPathActive(resolveHref(subItem.href))
+    );
+
+    if (isPaymentsRoute && !isCollapsed) {
+      setIsPaymentsOpen(true);
+    }
+  }, [pathname, isCollapsed, isPathActive, resolveHref]);
+
   useEffect(() => {
     const handleOutsideClick = (event) => {
       if (dropdownRef.current && !dropdownRef.current.contains(event.target)) {
@@ -372,6 +393,7 @@ export default function AdminSidebar({ isOpen, toggleSidebar, isCollapsed }) {
     };
 
     document.addEventListener("mousedown", handleOutsideClick);
+
     return () => document.removeEventListener("mousedown", handleOutsideClick);
   }, []);
 
@@ -471,6 +493,7 @@ export default function AdminSidebar({ isOpen, toggleSidebar, isCollapsed }) {
     return (
       <div key={item.name} className="space-y-1">
         <button
+          type="button"
           onClick={() => setIsPaymentsOpen((prev) => !prev)}
           className={cn(
             "group flex w-full items-center justify-between rounded-xl px-4 py-2.5 transition-all duration-150",
@@ -556,6 +579,7 @@ export default function AdminSidebar({ isOpen, toggleSidebar, isCollapsed }) {
 
           {!isCollapsed && (
             <button
+              type="button"
               onClick={toggleSidebar}
               className="rounded-lg p-1.5 text-slate-400 transition-colors hover:bg-slate-100 lg:hidden"
               aria-label="Close sidebar"
@@ -631,9 +655,15 @@ export default function AdminSidebar({ isOpen, toggleSidebar, isCollapsed }) {
 
         <nav className="scrollbar-hide flex-1 space-y-5 overflow-x-hidden overflow-y-auto px-3 py-4">
           {NAV_GROUPS.map((group) => {
-            const visibleItems = group.items.filter(
-              (item) => !isBlocked(item.href)
-            );
+            const visibleItems = group.items.filter((item) => {
+              if (item.subItems?.length) {
+                return item.subItems.some(
+                  (subItem) => !isBlocked(subItem.href)
+                );
+              }
+
+              return !isBlocked(item.href);
+            });
 
             if (visibleItems.length === 0) return null;
 
@@ -708,6 +738,7 @@ export default function AdminSidebar({ isOpen, toggleSidebar, isCollapsed }) {
                   )}
 
                   <button
+                    type="button"
                     onClick={handleLogout}
                     disabled={loading}
                     className="rounded-lg p-1.5 text-slate-400 transition-colors hover:bg-rose-50 hover:text-rose-500"
@@ -746,6 +777,7 @@ export default function AdminSidebar({ isOpen, toggleSidebar, isCollapsed }) {
 
               <CollapseTooltip label="Logout">
                 <button
+                  type="button"
                   onClick={handleLogout}
                   disabled={loading}
                   className="rounded-lg p-2 text-slate-400 transition-colors hover:bg-rose-50 hover:text-rose-500"
