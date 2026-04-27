@@ -1,6 +1,28 @@
 import api from "@/lib/api";
 
 export const usersService = {
+
+
+  /*|--------------------------------------------------------------------------
+  | Get users by authenticated owner
+  |--------------------------------------------------------------------------
+  */
+  getByOwner: (params) =>
+    api.get("/owner/users", {
+      params,
+    }),
+
+  /*
+  /*
+  |--------------------------------------------------------------------------
+  | Create owner user
+  |--------------------------------------------------------------------------
+  */
+  create: (data) =>
+    api.post("/owner/users", data, {
+      headers: { Accept: "application/json" },
+    }),
+
   /*
   |--------------------------------------------------------------------------
   | Get one user
@@ -13,7 +35,10 @@ export const usersService = {
   | Update user
   |--------------------------------------------------------------------------
   */
-  update: (id, data) => api.put(`/owner/users/${id}`, data),
+  update: (id, data) =>
+    api.put(`/owner/users/${id}`, data, {
+      headers: { Accept: "application/json" },
+    }),
 
   /*
   |--------------------------------------------------------------------------
@@ -26,6 +51,7 @@ export const usersService = {
 
     return api.post(`/owner/users/${id}/avatar`, formData, {
       headers: {
+        Accept: "application/json",
         "Content-Type": "multipart/form-data",
       },
     });

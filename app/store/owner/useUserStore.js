@@ -9,6 +9,7 @@ export const useUserStore = create((set, get) => ({
   meta: null,
   loading: false,
   error: null,
+  successMessage: null,
 
   /*
     |--------------------------------------------------------------------------
@@ -17,18 +18,57 @@ export const useUserStore = create((set, get) => ({
     */
 
   withLoading: async (fn) => {
-    set({ loading: true, error: null });
+    set({
+      loading: true,
+      error: null,
+      successMessage: null,
+    });
 
     try {
       return await fn();
     } catch (err) {
-      set({ error: err?.response?.data || err });
+      const error = err?.response?.data || err;
+
+      set({ error });
+
       throw err;
     } finally {
       set({ loading: false });
     }
   },
 
+  fetchUsersByOwner: async (params = {}) =>
+    get().withLoading(async () => {
+      const { data } = await usersService.getByOwner(params);
+
+      set({
+        users: data.data?.data || data.data || [],
+        meta: data.meta || null,
+      });
+
+      return data.data?.data || data.data || [];
+    }),
+
+  /*
+    |--------------------------------------------------------------------------
+    | Create single user by owner
+    |--------------------------------------------------------------------------
+    */
+
+  createUserByOwner: async (payload) =>
+    get().withLoading(async () => {
+      const { data } = await usersService.create(payload);
+
+      const createdUser = data.user || data.data;
+
+      set((state) => ({
+        users: createdUser ? [createdUser, ...state.users] : state.users,
+        user: createdUser,
+        successMessage: data.message || "User created successfully.",
+      }));
+
+      return createdUser;
+    }),
   /*
     |--------------------------------------------------------------------------
     | Fetch single user
@@ -39,9 +79,11 @@ export const useUserStore = create((set, get) => ({
     get().withLoading(async () => {
       const { data } = await usersService.getOne(id);
 
-      set({ user: data.user || data.data });
+      const fetchedUser = data.user || data.data;
 
-      return data.user || data.data;
+      set({ user: fetchedUser });
+
+      return fetchedUser;
     }),
 
   /*
@@ -54,14 +96,22 @@ export const useUserStore = create((set, get) => ({
     get().withLoading(async () => {
       const { data } = await usersService.update(id, payload);
 
-      const users = get().users.map((u) =>
-        u.id === id ? data.user || data.data : u
-      );
+      const updatedUser = data.user || data.data;
 
-      set({ users });
+      set((state) => ({
+        users: state.users.map((u) => (u.id === id ? updatedUser : u)),
+        user: updatedUser,
+        successMessage: data.message || "User updated successfully.",
+      }));
 
-      return data.user || data.data;
+      return updatedUser;
     }),
+
+  /*
+    |--------------------------------------------------------------------------
+    | Update avatar
+    |--------------------------------------------------------------------------
+    */
 
   updateAvatar: async (id, file) =>
     get().withLoading(async () => {
@@ -69,13 +119,30 @@ export const useUserStore = create((set, get) => ({
 
       const updatedUser = data.user || data.data;
 
-      // update this store
-      set({ user: updatedUser });
+      set((state) => ({
+        user: updatedUser,
+        users: state.users.map((u) => (u.id === id ? updatedUser : u)),
+        successMessage: data.message || "Avatar updated successfully.",
+      }));
 
-      // sync auth store so Navbar updates instantly
+      // Sync auth store so Navbar updates instantly
       const { useAuthStore } = await import("@/app/store/useAuthStore");
       useAuthStore.setState({ user: updatedUser });
 
       return updatedUser;
+    }),
+
+  /*
+    |--------------------------------------------------------------------------
+    | Clear state
+    |--------------------------------------------------------------------------
+    */
+
+  clearUserState: () =>
+    set({
+      user: null,
+      error: null,
+      successMessage: null,
+      loading: false,
     }),
 }));

@@ -18,10 +18,8 @@ import {
   User,
   ShoppingCart,
   ExternalLink,
-
   Banknote,
   ReceiptText, // New icon
-
 } from "lucide-react";
 import { useOwnerGuard } from "../../../../app/hooks/useOwnerGuard";
 import { useServiceBookingStore } from "../../../../app/store/useServiceBookingStore";
@@ -227,7 +225,7 @@ const ExpandedRow = ({ booking }) => {
 export default function PaymentHistoryPage() {
   const { ownerId, authUser, initialized } = useOwnerGuard();
   const {
-    fetchServiceBookingsByOwner,
+    fetchServiceBookingHistoryByOwner,
     serviceBookings,
     pagination,
     loading,
@@ -237,8 +235,8 @@ export default function PaymentHistoryPage() {
   const [expandedRow, setExpandedRow] = useState(null);
 
   useEffect(() => {
-    if (ownerId) fetchServiceBookingsByOwner(ownerId);
-  }, [ownerId, fetchServiceBookingsByOwner]);
+    if (ownerId) fetchServiceBookingHistoryByOwner(ownerId);
+  }, [ownerId, fetchServiceBookingHistoryByOwner]);
 
   const totalBookings = pagination?.total || serviceBookings.length;
   const paidCount = serviceBookings.filter((b) =>

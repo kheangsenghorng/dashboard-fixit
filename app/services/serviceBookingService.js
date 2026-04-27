@@ -7,8 +7,13 @@ export const serviceBookingService = {
   // Get single service booking
   getOne: (id) => api.get(`/service-bookings/${id}`),
 
+  // Get service bookings by owner ID
   getByOwnerId: (ownerId, params) =>
     api.get(`/owner/service-bookings/owner/${ownerId}`, { params }),
+
+  // Get service booking history by owner ID
+  getHistoryByOwnerId: (ownerId, params) =>
+    api.get(`/owner/service-bookings/owner/${ownerId}/history`, { params }),
 
   // Create service booking
   create: (data) =>
