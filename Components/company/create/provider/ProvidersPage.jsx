@@ -1,165 +1,309 @@
 "use client";
-import React, { useState } from 'react';
-import { PlusCircle, Users, Trash2 } from 'lucide-react';
 
-const ProvidersPage = () => {
-  // State for the list of providers (Mock data)
-  const [providers, setProviders] = useState([
-    { provider_id: 1, user_id: 101, owner_id: 50, category_id: 1, status: 'Active', provider_type: 'staff' },
-    { provider_id: 2, user_id: 102, owner_id: 50, category_id: 2, status: 'Pending', provider_type: 'freelancer' },
-  ]);
+import React, { useEffect, useState } from "react";
+import * as XLSX from "xlsx";
+import { UserPlus, Briefcase, FileSpreadsheet } from "lucide-react";
+import { toast } from "react-toastify";
 
-  // State for the form
-  const [formData, setFormData] = useState({
-    user_id: '',
-    owner_id: '',
-    category_id: '',
-    status: 'Active',
-    provider_type: 'staff' // Default ENUM value
+import { useOwnerGuard } from "../../../../app/hooks/useOwnerGuard";
+import { useUserStore } from "../../../../app/store/owner/useUserStore";
+
+import TabButton from "./ManagementPage/components/TabButton";
+import SelectionModal from "./ManagementPage/components/SelectionModal";
+import UserForm from "./ManagementPage/components/UserForm";
+
+import BulkImport from "./ManagementPage/components/BulkImport";
+import ProviderForm from "./ManagementPage/components/ProviderForm";
+import { useOwnerCategoryStore } from "../../../../app/store/owner/useOwnerCategoryStore";
+import { useProviderStore } from "../../../../app/store/provider/providerStore";
+
+const ManagementPage = () => {
+  const { ownerId, authUser, initialized } = useOwnerGuard();
+  const { createUserByOwner, fetchUsersByOwner, users } = useUserStore();
+  const {
+    activeCategories,
+    fetchActiveCategoriesByOwner,
+    loading: categoryLoading,
+  } = useOwnerCategoryStore();
+  const { createProvider, loading: providerLoading } = useProviderStore();
+
+  const [activeTab, setActiveTab] = useState("user");
+  const [loading, setLoading] = useState(false);
+
+  // Modal States
+  const [userModal, setUserModal] = useState(false);
+  const [catModal, setCatModal] = useState(false);
+  const [selectedUser, setSelectedUser] = useState(null);
+  const [selectedCategory, setSelectedCategory] = useState(null);
+  useEffect(() => {
+    fetchUsersByOwner();
+    fetchActiveCategoriesByOwner();
+  }, [fetchUsersByOwner, fetchActiveCategoriesByOwner]);
+
+  // Form States
+  const [userData, setUserData] = useState({
+    name: "",
+    email: "",
+    role: "provider",
+    phone: "",
+    is_active: true,
+  });
+  const [providerData, setProviderData] = useState({
+    user_id: "",
+    owner_id: "",
+    category_id: "",
+    status: "active",
+    provider_type: "staff",
+    rating: 0,
+    total_jobs: 0,
+    comment: "",
   });
 
-  const handleInputChange = (e) => {
+  const handleProviderChange = (e) => {
     const { name, value } = e.target;
-    setFormData({ ...formData, [name]: value });
+
+    setProviderData((prev) => ({
+      ...prev,
+      [name]:
+        name.includes("_id") || name === "rating" || name === "total_jobs"
+          ? Number(value)
+          : value,
+    }));
+  };
+  const [excelData, setExcelData] = useState([]);
+  const [fileName, setFileName] = useState("");
+
+  const handleExcelUpload = (e) => {
+    const file = e.target.files?.[0];
+    if (!file) return;
+    setFileName(file.name);
+    const reader = new FileReader();
+    reader.onload = (evt) => {
+      const wb = XLSX.read(evt.target.result, { type: "binary" });
+      setExcelData(XLSX.utils.sheet_to_json(wb.Sheets[wb.SheetNames[0]]));
+    };
+    reader.readAsBinaryString(file);
   };
 
-  const handleSubmit = (e) => {
+  const handleSubmit = async (e, type) => {
     e.preventDefault();
-    const newProvider = {
-      ...formData,
-      provider_id: providers.length + 1, // Mock PK generation
-    };
-    setProviders([...providers, newProvider]);
-    // Reset form
-    setFormData({ user_id: '', owner_id: '', category_id: '', status: 'Active', provider_type: 'staff' });
+
+    if (loading) {
+      toast.warning("Please wait. Request is still processing.");
+      return;
+    }
+
+    setLoading(true);
+
+    try {
+      if (type === "User") {
+        if (!userData.name.trim()) {
+          toast.warning("User name is required.");
+          return;
+        }
+
+        if (!userData.email.trim()) {
+          toast.warning("User email is required.");
+          return;
+        }
+
+        await createUserByOwner(userData);
+
+        toast.success("User created successfully!");
+
+        setUserData({
+          name: "",
+          email: "",
+          role: "provider",
+          phone: "",
+          is_active: true,
+        });
+      }
+
+      if (type === "Provider") {
+        if (!providerData.user_id) {
+          toast.warning("Please select a user.");
+          return;
+        }
+
+        if (!providerData.category_id) {
+          toast.warning("Please select a category.");
+          return;
+        }
+
+        const payload = {
+          ...providerData,
+          owner_id: ownerId,
+        };
+
+        await createProvider(payload);
+
+        toast.success("Provider created successfully!");
+
+        setProviderData({
+          user_id: "",
+          owner_id: "",
+          category_id: "",
+          status: "active",
+          provider_type: "staff",
+          rating: 0,
+          total_jobs: 0,
+          comment: "",
+        });
+
+        setSelectedUser(null);
+        setSelectedCategory(null);
+      }
+
+      if (type === "Bulk") {
+        if (!excelData.length) {
+          toast.warning("Please upload a file first.");
+          return;
+        }
+
+        console.log("Submitting Bulk:", excelData);
+
+        setExcelData([]);
+        setFileName("");
+
+        toast.success("Bulk records processed successfully!");
+      }
+    } catch (error) {
+      const validationErrors = error?.response?.data?.errors;
+
+      const errorMessage = validationErrors
+        ? Object.values(validationErrors).flat().join(" ")
+        : error?.response?.data?.message ||
+          "Something went wrong. Please try again.";
+
+      toast.error(errorMessage);
+
+      console.log("Submit error:", error?.response?.data || error);
+    } finally {
+      setLoading(false);
+    }
   };
+
+  if (!initialized || !authUser) {
+    return (
+      <div className="flex items-center justify-center h-64">
+        <p className="text-slate-500">Loading...</p>
+      </div>
+    );
+  }
 
   return (
-    <div className="p-8 bg-gray-50 min-h-screen">
+    <div className="min-h-screen  p-4 md:p-10">
+      {/* Pop-up Modals */}
+      <SelectionModal
+        isOpen={userModal}
+        onClose={() => setUserModal(false)}
+        title="Select User"
+        items={users}
+        displayKey="name"
+        loading={loading}
+        onSelect={(u) => {
+          setSelectedUser(u);
+
+          setProviderData((prev) => ({
+            ...prev,
+            user_id: u.id,
+          }));
+        }}
+      />
+      <SelectionModal
+        isOpen={catModal}
+        onClose={() => setCatModal(false)}
+        title="Select Category"
+        items={activeCategories}
+        displayKey="name"
+        loading={categoryLoading}
+        onSelect={(c) => {
+          setSelectedCategory(c);
+
+          setProviderData((prev) => ({
+            ...prev,
+            category_id: c.id,
+          }));
+        }}
+      />
+
       <div className="max-w-6xl mx-auto">
-        <h1 className="text-3xl font-bold mb-8 flex items-center gap-2">
-          <Users className="text-blue-600" /> Provider Management
-        </h1>
+        <header className="mb-10">
+          <h1 className="text-4xl font-black text-slate-800">Control Panel</h1>
+          <p className="text-slate-500 font-medium">
+            Manage organization records
+          </p>
+        </header>
 
-        {/* --- CREATE SECTION --- */}
-        <div className="bg-white p-6 rounded-lg shadow-md mb-10">
-          <h2 className="text-xl font-semibold mb-4 flex items-center gap-2">
-            <PlusCircle size={20} /> Add New Provider
-          </h2>
-          <form onSubmit={handleSubmit} className="grid grid-cols-1 md:grid-cols-3 gap-4">
-            <div>
-              <label className="block text-sm font-medium mb-1">User ID (FK)</label>
-              <input
-                type="number"
-                name="user_id"
-                value={formData.user_id}
-                onChange={handleInputChange}
-                className="w-full p-2 border rounded shadow-sm focus:ring-2 focus:ring-blue-500 outline-none"
-                required
-              />
-            </div>
-            <div>
-              <label className="block text-sm font-medium mb-1">Owner ID (FK)</label>
-              <input
-                type="number"
-                name="owner_id"
-                value={formData.owner_id}
-                onChange={handleInputChange}
-                className="w-full p-2 border rounded shadow-sm focus:ring-2 focus:ring-blue-500 outline-none"
-                required
-              />
-            </div>
-            <div>
-              <label className="block text-sm font-medium mb-1">Category ID (FK)</label>
-              <input
-                type="number"
-                name="category_id"
-                value={formData.category_id}
-                onChange={handleInputChange}
-                className="w-full p-2 border rounded shadow-sm focus:ring-2 focus:ring-blue-500 outline-none"
-                required
-              />
-            </div>
-            <div>
-              <label className="block text-sm font-medium mb-1">Status</label>
-              <input
-                type="text"
-                name="status"
-                value={formData.status}
-                onChange={handleInputChange}
-                placeholder="e.g. Active"
-                className="w-full p-2 border rounded shadow-sm focus:ring-2 focus:ring-blue-500 outline-none"
-                required
-              />
-            </div>
-            <div>
-              <label className="block text-sm font-medium mb-1">Provider Type (ENUM)</label>
-              <select
-                name="provider_type"
-                value={formData.provider_type}
-                onChange={handleInputChange}
-                className="w-full p-2 border rounded shadow-sm focus:ring-2 focus:ring-blue-500 outline-none bg-white"
-              >
-                <option value="staff">Staff</option>
-                <option value="freelancer">Freelancer</option>
-              </select>
-            </div>
-            <div className="flex items-end">
-              <button
-                type="submit"
-                className="w-full bg-blue-600 text-white py-2 px-4 rounded hover:bg-blue-700 transition duration-200"
-              >
-                Add Provider
-              </button>
-            </div>
-          </form>
-        </div>
+        <div className="flex flex-col lg:flex-row gap-8">
+          <div className="lg:w-72 flex flex-col gap-2">
+            <TabButton
+              active={activeTab === "user"}
+              onClick={() => setActiveTab("user")}
+              icon={<UserPlus size={20} />}
+              label="New User"
+              desc="Manual Entry"
+            />
+            <TabButton
+              active={activeTab === "provider"}
+              onClick={() => setActiveTab("provider")}
+              icon={<Briefcase size={20} />}
+              label="New Provider"
+              desc="Service Setup"
+            />
+            <TabButton
+              active={activeTab === "bulk"}
+              onClick={() => setActiveTab("bulk")}
+              icon={<FileSpreadsheet size={20} />}
+              label="Bulk Import"
+              desc="Excel Upload"
+            />
+          </div>
 
-        {/* --- DISPLAY SECTION --- */}
-        <div className="bg-white rounded-lg shadow-md overflow-hidden">
-          <table className="w-full text-left border-collapse">
-            <thead className="bg-gray-100">
-              <tr>
-                <th className="p-4 border-b font-bold text-gray-700">ID (PK)</th>
-                <th className="p-4 border-b font-bold text-gray-700">User ID</th>
-                <th className="p-4 border-b font-bold text-gray-700">Owner</th>
-                <th className="p-4 border-b font-bold text-gray-700">Category</th>
-                <th className="p-4 border-b font-bold text-gray-700">Type</th>
-                <th className="p-4 border-b font-bold text-gray-700">Status</th>
-                <th className="p-4 border-b font-bold text-gray-700">Action</th>
-              </tr>
-            </thead>
-            <tbody>
-              {providers.map((p) => (
-                <tr key={p.provider_id} className="hover:bg-gray-50 transition">
-                  <td className="p-4 border-b font-mono text-blue-600">{p.provider_id}</td>
-                  <td className="p-4 border-b">{p.user_id}</td>
-                  <td className="p-4 border-b">{p.owner_id}</td>
-                  <td className="p-4 border-b">{p.category_id}</td>
-                  <td className="p-4 border-b">
-                    <span className={`px-3 py-1 rounded-full text-xs font-semibold ${
-                      p.provider_type === 'staff' ? 'bg-purple-100 text-purple-700' : 'bg-orange-100 text-orange-700'
-                    }`}>
-                      {p.provider_type.toUpperCase()}
-                    </span>
-                  </td>
-                  <td className="p-4 border-b italic text-gray-600">{p.status}</td>
-                  <td className="p-4 border-b">
-                    <button 
-                      onClick={() => setProviders(providers.filter(item => item.provider_id !== p.provider_id))}
-                      className="text-red-500 hover:text-red-700"
-                    >
-                      <Trash2 size={18} />
-                    </button>
-                  </td>
-                </tr>
-              ))}
-            </tbody>
-          </table>
+          <div className="flex-1 bg-white rounded-[2.5rem] shadow-xl border border-slate-100 p-8 md:p-12 overflow-hidden">
+            {activeTab === "user" && (
+              <UserForm
+                data={userData}
+                loading={loading}
+                onChange={(e) =>
+                  setUserData({ ...userData, [e.target.name]: e.target.value })
+                }
+                onSubmit={handleSubmit}
+              />
+            )}
+
+            {activeTab === "provider" && (
+              <ProviderForm
+                data={providerData}
+                selectedUser={selectedUser}
+                selectedCategory={selectedCategory}
+                onChange={handleProviderChange}
+                onOpenUser={() => setUserModal(true)}
+                onOpenCat={() => setCatModal(true)}
+                onSubmit={handleSubmit}
+                loading={loading || providerLoading}
+              />
+            )}
+
+            {activeTab === "bulk" && (
+              <BulkImport
+                excelData={excelData}
+                fileName={fileName}
+                loading={loading}
+                onUpload={handleExcelUpload}
+                onClear={() => {
+                  setExcelData([]);
+                  setFileName("");
+                }}
+                onSubmit={(e) => handleSubmit(e, "Bulk")}
+              />
+            )}
+          </div>
         </div>
       </div>
     </div>
   );
 };
 
-export default ProvidersPage;
+export default ManagementPage;

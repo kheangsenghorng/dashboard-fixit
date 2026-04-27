@@ -26,8 +26,7 @@ export const useServiceBookingStore = create((set) => ({
     } catch (error) {
       set({
         error:
-          error?.response?.data?.message ||
-          "Failed to fetch service bookings",
+          error?.response?.data?.message || "Failed to fetch service bookings",
         loading: false,
         serviceBookings: [],
       });
@@ -37,18 +36,21 @@ export const useServiceBookingStore = create((set) => ({
   fetchServiceBookingsByOwner: async (ownerId, params = {}) => {
     try {
       set({ loading: true, error: null });
-  
-      const response = await serviceBookingService.getByOwnerId(ownerId, params);
-  
+
+      const response = await serviceBookingService.getByOwnerId(
+        ownerId,
+        params
+      );
+
       const bookings = response?.data?.data || [];
       const pagination = response?.data?.pagination || null;
-  
+
       set({
         serviceBookings: bookings,
         pagination,
         loading: false,
       });
-  
+
       return response.data;
     } catch (error) {
       set({
@@ -59,7 +61,7 @@ export const useServiceBookingStore = create((set) => ({
         serviceBookings: [],
         pagination: null,
       });
-  
+
       throw error;
     }
   },
@@ -76,8 +78,7 @@ export const useServiceBookingStore = create((set) => ({
     } catch (error) {
       set({
         error:
-          error?.response?.data?.message ||
-          "Failed to fetch service booking",
+          error?.response?.data?.message || "Failed to fetch service booking",
         loading: false,
       });
     }
@@ -101,8 +102,7 @@ export const useServiceBookingStore = create((set) => ({
     } catch (error) {
       set({
         error:
-          error?.response?.data?.message ||
-          "Failed to create service booking",
+          error?.response?.data?.message || "Failed to create service booking",
         loading: false,
       });
 
@@ -129,9 +129,75 @@ export const useServiceBookingStore = create((set) => ({
     } catch (error) {
       set({
         error:
-          error?.response?.data?.message ||
-          "Failed to update service booking",
+          error?.response?.data?.message || "Failed to update service booking",
         loading: false,
+      });
+
+      throw error;
+    }
+  },
+
+  patchServiceBooking: async (id, data) => {
+    try {
+      set({ loading: true, error: null });
+
+      const response = await serviceBookingService.patch(id, data);
+      const patchedBooking = response?.data?.data || response?.data;
+
+      set((state) => ({
+        serviceBookings: state.serviceBookings.map((item) =>
+          item.id === id ? { ...item, ...patchedBooking } : item
+        ),
+        serviceBooking:
+          state.serviceBooking?.id === id
+            ? { ...state.serviceBooking, ...patchedBooking }
+            : state.serviceBooking,
+        loading: false,
+      }));
+
+      return response.data;
+    } catch (error) {
+      set({
+        error:
+          error?.response?.data?.message || "Failed to patch service booking",
+        loading: false,
+      });
+
+      throw error;
+    }
+  },
+  fetchServiceBookingHistoryByOwner: async (ownerId, params = {}) => {
+    try {
+      set({ loading: true, error: null });
+
+      const response = await serviceBookingService.getHistoryByOwnerId(
+        ownerId,
+        params
+      );
+
+      const bookings = response?.data?.data?.data || response?.data?.data || [];
+
+      const pagination =
+        response?.data?.data?.meta ||
+        response?.data?.meta ||
+        response?.data?.pagination ||
+        null;
+
+      set({
+        serviceBookings: bookings,
+        pagination,
+        loading: false,
+      });
+
+      return response.data;
+    } catch (error) {
+      set({
+        error:
+          error?.response?.data?.message ||
+          "Failed to fetch owner service booking history",
+        loading: false,
+        serviceBookings: [],
+        pagination: null,
       });
 
       throw error;
@@ -153,8 +219,7 @@ export const useServiceBookingStore = create((set) => ({
     } catch (error) {
       set({
         error:
-          error?.response?.data?.message ||
-          "Failed to delete service booking",
+          error?.response?.data?.message || "Failed to delete service booking",
         loading: false,
       });
 
