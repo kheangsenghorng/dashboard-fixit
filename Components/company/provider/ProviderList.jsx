@@ -43,6 +43,8 @@ export default function ProvidersPage() {
     }
   }, [ownerId, fetchProvidersByOwner]);
 
+  console.log(providers);
+
   const filteredProviders = useMemo(() => {
     if (!searchTerm.trim()) return providers || [];
 
@@ -325,29 +327,68 @@ export default function ProvidersPage() {
                       </td>
 
                       <td className="px-6 py-4">
-                        <span
-                          className={`inline-flex items-center gap-1 px-2.5 py-1 rounded-full text-[10px] font-bold uppercase tracking-wider ${
-                            provider.status === "active"
-                              ? "bg-emerald-50 text-emerald-600"
-                              : provider.status === "inactive"
-                              ? "bg-amber-50 text-amber-600"
-                              : "bg-rose-50 text-rose-600"
-                          }`}
-                        >
-                          {provider.status === "active" && (
-                            <CheckCircle2 size={12} />
-                          )}
-                          {provider.status === "inactive" && (
-                            <Clock size={12} />
-                          )}
-                          {provider.status !== "active" &&
-                            provider.status !== "inactive" && (
-                              <AlertCircle size={12} />
-                            )}
-                          {provider.status || "unknown"}
-                        </span>
-                      </td>
+                        {(() => {
+                          const status =
+                            provider?.bookingProviders?.[0]?.status ||
+                            "unknown";
 
+                          const statusConfig = {
+                            assigned: {
+                              label: "Assigned",
+                              className: "bg-slate-50 text-slate-600",
+                              icon: Clock,
+                            },
+                            accepted: {
+                              label: "Accepted",
+                              className: "bg-blue-50 text-blue-600",
+                              icon: CheckCircle2,
+                            },
+                            on_the_way: {
+                              label: "On the way",
+                              className: "bg-indigo-50 text-indigo-600",
+                              icon: Clock,
+                            },
+                            arrived: {
+                              label: "Arrived",
+                              className: "bg-cyan-50 text-cyan-600",
+                              icon: CheckCircle2,
+                            },
+                            working: {
+                              label: "Working",
+                              className: "bg-amber-50 text-amber-600",
+                              icon: Clock,
+                            },
+                            completed: {
+                              label: "Completed",
+                              className: "bg-emerald-50 text-emerald-600",
+                              icon: CheckCircle2,
+                            },
+                            declined: {
+                              label: "Declined",
+                              className: "bg-rose-50 text-rose-600",
+                              icon: AlertCircle,
+                            },
+                            unknown: {
+                              label: "Unknown",
+                              className: "bg-slate-50 text-slate-500",
+                              icon: AlertCircle,
+                            },
+                          };
+
+                          const config =
+                            statusConfig[status] || statusConfig.unknown;
+                          const StatusIcon = config.icon;
+
+                          return (
+                            <span
+                              className={`inline-flex items-center gap-1 px-2.5 py-1 rounded-full text-[10px] font-bold uppercase tracking-wider ${config.className}`}
+                            >
+                              <StatusIcon size={12} />
+                              {config.label}
+                            </span>
+                          );
+                        })()}
+                      </td>
                       <td className="px-6 py-4 text-right">
                         <div className="flex items-center justify-end gap-2">
                           <button className="p-2 text-slate-400 hover:text-indigo-600 bg-transparent hover:bg-indigo-50 rounded-lg transition-all">

@@ -7,6 +7,8 @@ import PublicOwnerCreatedListener from "./PublicOwnerCreatedListener";
 import CouponUsageListener from "./CouponUsageListener";
 import ServiceBookingListener from "./ServiceBookingListener";
 import PaymentListener from "./PaymentListener";
+import ServiceBookingProviderListener from "./booking/ServiceBookingProviderListener";
+
 export default function RealtimeListeners() {
   return (
     <>
@@ -17,6 +19,7 @@ export default function RealtimeListeners() {
       <CouponUsageListener />
       <ServiceBookingListener />
       <PaymentListener />
+      <ServiceBookingProviderListener />
     </>
   );
 }

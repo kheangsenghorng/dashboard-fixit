@@ -10,6 +10,10 @@ export const providerService = {
   // Find providers by owner
   getByOwner: (ownerId) => api.get(`/providers/owner/${ownerId}`),
 
+  //fine quick check providers by owner
+  getByOwnerCheckprovider: (ownerId) =>
+    api.get(`/providers/check-provider/owner/${ownerId}/check`),
+
   // Create provider
   create: (data) =>
     api.post("/providers", data, {

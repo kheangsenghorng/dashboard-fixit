@@ -3,6 +3,7 @@
 import React, { useEffect, useState } from "react";
 import { useParams } from "next/navigation";
 import { useServiceBookingStore } from "../../../../app/store/useServiceBookingStore";
+import { useServiceBookingProviderStore } from "../../../../app/store/booking/useServiceBookingProviderStore";
 import { useProviderStore } from "../../../../app/store/provider/providerStore";
 import { useRequireAuth } from "../../../../app/hooks/useRequireAuth";
 import { useOwnerGuard } from "../../../../app/hooks/useOwnerGuard";
@@ -13,13 +14,13 @@ import ProfileSidebar from "../components/ProfileSidebar";
 import TeamAndInstructions from "../components/TeamAndInstructions";
 import ReceiptSidebar from "../components/ReceiptSidebar";
 import ReviewsCard from "../components/ReviewsCard";
-
-// Internal Components
+import ServiceBookingProviderListener from "../../../realtime/booking/ServiceBookingProviderListener";
 
 const StaffBookingAdmin = () => {
   const params = useParams();
   const bookingId = params?.id;
-  const { user: authUser, initialized } = useRequireAuth();
+
+  const { initialized } = useRequireAuth();
   const { ownerId } = useOwnerGuard();
 
   const {
@@ -29,50 +30,93 @@ const StaffBookingAdmin = () => {
     loading,
     error,
   } = useServiceBookingStore();
-  const { fetchProvidersByOwner, providers } = useProviderStore();
 
-  const [assignedStaff, setAssignedStaff] = useState([]);
+  const { fetchCheckProvidersByOwner, providers } = useProviderStore();
+
+  const {
+    serviceBookingProviders,
+    getProvidersByBookingId,
+    removeServiceBookingProvider,
+  } = useServiceBookingProviderStore();
+
   const [isModalOpen, setIsModalOpen] = useState(false);
   const [searchQuery, setSearchQuery] = useState("");
   const [isCancelling, setIsCancelling] = useState(false);
   const [cancelReason, setCancelReason] = useState("");
 
   useEffect(() => {
-    if (bookingId) fetchServiceBooking(bookingId);
-    if (ownerId) fetchProvidersByOwner(ownerId);
-  }, [bookingId, ownerId]);
+    if (bookingId) {
+      fetchServiceBooking(bookingId);
+      getProvidersByBookingId(bookingId);
+    }
+
+    if (ownerId) {
+      fetchCheckProvidersByOwner(ownerId);
+    }
+  }, [
+    bookingId,
+    ownerId,
+    fetchServiceBooking,
+    getProvidersByBookingId,
+    fetchCheckProvidersByOwner,
+  ]);
+
+  const assignedStaff = Array.isArray(serviceBookingProviders)
+    ? serviceBookingProviders
+    : Array.isArray(serviceBookingProviders?.data)
+    ? serviceBookingProviders.data
+    : [];
+
+  const handleRefreshAssignedStaff = async () => {
+    if (!bookingId) return;
+    await getProvidersByBookingId(bookingId);
+  };
+
+  const handleRemoveStaff = async (staff) => {
+    const serviceBookingProviderId = staff?.id;
+
+    if (!serviceBookingProviderId) return;
+
+    await removeServiceBookingProvider(serviceBookingProviderId);
+    await handleRefreshAssignedStaff();
+    await fetchCheckProvidersByOwner(ownerId);
+  };
 
   const handleUpdateStatus = async (status, reason = null) => {
+    if (!serviceBooking?.id) return;
+
     await patchServiceBooking(serviceBooking.id, {
       booking_status: status,
       cancellation_reason: reason,
     });
+
     setIsCancelling(false);
-    fetchServiceBooking(bookingId);
+    await fetchServiceBooking(bookingId);
   };
 
-  if (loading || !initialized)
+  if (loading || !initialized) {
     return (
       <div className="min-h-screen flex items-center justify-center font-bold text-slate-400 uppercase">
         Loading System...
       </div>
     );
+  }
+
   if (!serviceBooking) return null;
 
   return (
     <div className="min-h-screen bg-[#f8fafc] p-4 md:p-8 text-[12px]">
+      <ServiceBookingProviderListener />
       <AssignStaffModal
         isOpen={isModalOpen}
         onClose={() => setIsModalOpen(false)}
+        serviceBookingId={serviceBooking.id}
+        assignedBy={ownerId}
         providers={providers || []}
         assignedStaff={assignedStaff}
-        onToggle={(s) =>
-          setAssignedStaff((prev) =>
-            prev.includes(s) ? prev.filter((i) => i !== s) : [...prev, s]
-          )
-        }
         searchQuery={searchQuery}
         setSearchQuery={setSearchQuery}
+        onToggle={handleRefreshAssignedStaff}
       />
 
       <div className="max-w-6xl mx-auto">
@@ -86,22 +130,32 @@ const StaffBookingAdmin = () => {
           onRetry={() => fetchServiceBooking(bookingId)}
         />
 
+        {error && (
+          <div className="mb-4 rounded-2xl bg-rose-50 px-5 py-4 font-bold text-rose-600">
+            {error}
+          </div>
+        )}
+
         <div className="grid grid-cols-1 lg:grid-cols-12 gap-6">
           <div className="lg:col-span-8 space-y-6">
             <ServiceCard
               service={serviceBooking.service}
               booking={serviceBooking}
             />
+
             <TeamAndInstructions
               assignedStaff={assignedStaff}
               onAdd={() => setIsModalOpen(true)}
+              onRemove={handleRemoveStaff}
               notes={serviceBooking.notes}
             />
+
             <ReviewsCard reviews={serviceBooking.reviews} />
           </div>
 
           <div className="lg:col-span-4 space-y-6">
             <ReceiptSidebar payment={serviceBooking.payment?.[0]} />
+
             <ProfileSidebar
               user={serviceBooking.user}
               provider={serviceBooking.provider}

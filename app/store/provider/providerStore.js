@@ -77,6 +77,31 @@ export const useProviderStore = create((set, get) => ({
     }
   },
 
+  // Check available providers by owner
+  fetchCheckProvidersByOwner: async (ownerId) => {
+    set({ loading: true, error: null });
+
+    try {
+      const response = await providerService.getByOwnerCheckprovider(ownerId);
+
+      set({
+        providers: response.data.data || response.data,
+        loading: false,
+      });
+
+      return response.data;
+    } catch (error) {
+      set({
+        error:
+          error.response?.data?.message ||
+          "Failed to fetch available providers by owner",
+        loading: false,
+      });
+
+      throw error;
+    }
+  },
+
   // Create provider
   createProvider: async (data) => {
     set({ loading: true, error: null });
