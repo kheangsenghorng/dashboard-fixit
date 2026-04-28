@@ -137,7 +137,7 @@ const ReceiptSidebar = ({ payment }) => {
                 alt="Bakong KHQR"
                 width={65}
                 height={24}
-                className="object-contain h-auto"
+                className="object-contain w-auto h-auto"
               />
             </div>
           )}
