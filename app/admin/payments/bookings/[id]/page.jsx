@@ -1,5 +1,5 @@
-import AdminShell from "../AdminShell";
-import ProvidersPage from "../../../Components/admin/Providers/ProvidersPage";
+import AdminShell from "../../../AdminShell";
+
 
 export const metadata = {
   title: "Analytics – Admin Panel",
@@ -9,7 +9,7 @@ export const metadata = {
 export default function Page() {
   return (
     <AdminShell>
-      <ProvidersPage />
+      <PaymentPage />
     </AdminShell>
   );
 }

@@ -26,6 +26,10 @@ import {
   AlertTriangle,
   Ban,
   Banknote,
+  UserCheck,
+  Wrench,
+  ShieldQuestion,
+  AlertCircle,
 } from "lucide-react";
 import { useRequireAuth } from "../../../app/hooks/useRequireAuth";
 import { useServiceBookingStore } from "../../../app/store/useServiceBookingStore";
@@ -67,6 +71,37 @@ const BOOKING_STATUS = {
     pulse: true,
     icon: Clock,
   },
+
+  confirmed: {
+    label: "Confirmed",
+    bg: "bg-blue-50",
+    text: "text-blue-700",
+    ring: "ring-blue-200",
+    dot: "bg-blue-500",
+    pulse: false,
+    icon: UserCheck,
+  },
+
+  in_progress: {
+    label: "In Progress",
+    bg: "bg-indigo-50",
+    text: "text-indigo-700",
+    ring: "ring-indigo-200",
+    dot: "bg-indigo-500",
+    pulse: true,
+    icon: Wrench,
+  },
+
+  awaiting_customer_confirmation: {
+    label: "Awaiting Customer",
+    bg: "bg-purple-50",
+    text: "text-purple-700",
+    ring: "ring-purple-200",
+    dot: "bg-purple-500",
+    pulse: true,
+    icon: ShieldQuestion,
+  },
+
   completed: {
     label: "Completed",
     bg: "bg-emerald-50",
@@ -76,6 +111,7 @@ const BOOKING_STATUS = {
     pulse: false,
     icon: CheckCircle2,
   },
+
   cancelled: {
     label: "Cancelled",
     bg: "bg-rose-50",
@@ -84,6 +120,16 @@ const BOOKING_STATUS = {
     dot: "bg-rose-400",
     pulse: false,
     icon: Ban,
+  },
+
+  disputed: {
+    label: "Disputed",
+    bg: "bg-red-50",
+    text: "text-red-700",
+    ring: "ring-red-200",
+    dot: "bg-red-500",
+    pulse: true,
+    icon: AlertCircle,
   },
 };
 
@@ -360,6 +406,8 @@ export default function PaymentPage() {
   useEffect(() => {
     fetchServiceBookings();
   }, [fetchServiceBookings]);
+
+  console.log(serviceBookings);
 
   // Stats
   const totalBookings = pagination?.total || serviceBookings.length;
