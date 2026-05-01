@@ -19,8 +19,13 @@ jobs:
       - name: Checkout
         uses: actions/checkout@v4
 
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: "22.x"
+
       - name: Install Vercel CLI
-        run: npm install --global vercel@39 # pin to a stable major version
+        run: npm install --global vercel@39
 
       - name: Pull Vercel Preview Environment Information
         run: vercel pull --yes --environment=preview --token=${{ secrets.VERCEL_TOKEN }}
@@ -44,8 +49,13 @@ jobs:
       - name: Checkout
         uses: actions/checkout@v4
 
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: "22.x"
+
       - name: Install Vercel CLI
-        run: npm install --global vercel@39 # pin to a stable major version
+        run: npm install --global vercel@39
 
       - name: Pull Vercel Production Environment Information
         run: vercel pull --yes --environment=production --token=${{ secrets.VERCEL_TOKEN }}
