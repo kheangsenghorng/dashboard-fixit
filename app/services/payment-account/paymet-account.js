@@ -5,8 +5,7 @@ const paymentAccountService = {
 
   getById: (id) => api.get(`/owner/payment-accounts/${id}`),
 
-  getByUserId: (userId) =>
-    api.get(`/owner/payment-accounts/user/${userId}`),
+  getByUserId: (userId) => api.get(`/payment-accounts/user/${userId}`),
 
   create: (data) => api.post("/owner/payment-accounts", data),
 

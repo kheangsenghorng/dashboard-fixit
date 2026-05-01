@@ -2,7 +2,7 @@ import AdminShell from "../../AdminShell";
 import AdminPayoutPage from "../../../../Components/admin/payouts/payouts";
 
 export const metadata = {
-  title: "Analytics – Admin Panel",
+  title: "Payouts – Admin Panel",
   description: "View system analytics",
 };
 
