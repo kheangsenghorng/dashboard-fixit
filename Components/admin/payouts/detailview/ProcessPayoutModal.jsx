@@ -274,15 +274,7 @@ const ProcessPayoutModal = ({
                     label="To Account"
                     value={successData?.toAccountId}
                   />
-
-                  <SuccessRow label="Hash" value={successData?.hash} mono />
-
-                  <SuccessRow
-                    label="External Ref"
-                    value={successData?.externalRef}
-                  />
                 </div>
-
                 <button
                   type="button"
                   onClick={handleClose}
@@ -359,7 +351,6 @@ const ProcessPayoutModal = ({
                     {formatTime(timeLeft)}
                   </span>
                 </div>
-             
 
                 <button
                   type="button"
