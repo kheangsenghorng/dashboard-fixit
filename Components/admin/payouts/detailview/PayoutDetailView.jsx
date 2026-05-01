@@ -33,7 +33,7 @@ const PayoutDetailView = () => {
     payoutsError,
     payoutsEmpty,
     fetchPayouts,
-    payOwnerPayouts,
+    payMultipleAndSendEmail,
   } = useAdminOwnerPayoutStore();
 
   const { getPaymentAccountByUserId, paymentAccount } =
@@ -145,6 +145,20 @@ const PayoutDetailView = () => {
     );
   };
 
+  const getTransactionReference = (result) => {
+    const data = result?.data?.data;
+
+    return (
+      data?.transactionReference ||
+      data?.transaction_reference ||
+      data?.externalRef ||
+      data?.external_ref ||
+      data?.hash ||
+      generatedKhqr?.md5 ||
+      `BAKONG-TXN-${Date.now()}`
+    );
+  };
+
   const handleCheckTransaction = useCallback(
     async (showAlert = false) => {
       if (!generatedKhqr?.md5) {
@@ -173,7 +187,13 @@ const PayoutDetailView = () => {
         ) {
           hasReleasedPayoutRef.current = true;
 
-          await payOwnerPayouts({ ids: totals.pendingIds });
+          await payMultipleAndSendEmail({
+            owner_id: Number(ownerId),
+            payout_ids: totals.pendingIds,
+            method: "bakong",
+            transaction_reference: getTransactionReference(result),
+          });
+
           await refreshPayouts();
         }
 
@@ -194,6 +214,8 @@ const PayoutDetailView = () => {
           alert(getReadableErrorMessage(err, "Failed to check transaction"));
         }
 
+        hasReleasedPayoutRef.current = false;
+
         throw err;
       } finally {
         isCheckingTransactionRef.current = false;
@@ -201,10 +223,11 @@ const PayoutDetailView = () => {
       }
     },
     [
+      ownerId,
       generatedKhqr?.md5,
       checkTransactionByMd5,
       totals.pendingIds,
-      payOwnerPayouts,
+      payMultipleAndSendEmail,
       refreshPayouts,
     ]
   );
