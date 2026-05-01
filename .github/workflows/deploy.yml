@@ -25,7 +25,10 @@ jobs:
           node-version: "22.x"
 
       - name: Install Vercel CLI
-        run: npm install --global vercel@39
+        run: npm install --global vercel@latest
+
+      - name: Check Vercel CLI Version
+        run: vercel --version
 
       - name: Pull Vercel Preview Environment Information
         run: vercel pull --yes --environment=preview --token=${{ secrets.VERCEL_TOKEN }}
@@ -36,7 +39,7 @@ jobs:
       - name: Deploy Preview Project Artifacts to Vercel
         run: |
           for i in 1 2 3; do
-            vercel deploy --prebuilt --archive=tgz --token=${{ secrets.VERCEL_TOKEN }} && break
+            vercel deploy --prebuilt --token=${{ secrets.VERCEL_TOKEN }} && break
             echo "Attempt $i failed, retrying in 15s..."
             sleep 15
           done
@@ -55,7 +58,10 @@ jobs:
           node-version: "22.x"
 
       - name: Install Vercel CLI
-        run: npm install --global vercel@39
+        run: npm install --global vercel@latest
+
+      - name: Check Vercel CLI Version
+        run: vercel --version
 
       - name: Pull Vercel Production Environment Information
         run: vercel pull --yes --environment=production --token=${{ secrets.VERCEL_TOKEN }}
@@ -66,7 +72,7 @@ jobs:
       - name: Deploy Project Artifacts to Vercel Production
         run: |
           for i in 1 2 3; do
-            vercel deploy --prebuilt --prod --archive=tgz --token=${{ secrets.VERCEL_TOKEN }} && break
+            vercel deploy --prebuilt --prod --token=${{ secrets.VERCEL_TOKEN }} && break
             echo "Attempt $i failed, retrying in 15s..."
             sleep 15
           done
