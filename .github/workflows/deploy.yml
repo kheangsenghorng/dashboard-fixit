@@ -20,7 +20,7 @@ jobs:
         uses: actions/checkout@v4
 
       - name: Install Vercel CLI
-        run: npm install --global vercel@latest
+        run: npm install --global vercel@39 # pin to a stable major version
 
       - name: Pull Vercel Preview Environment Information
         run: vercel pull --yes --environment=preview --token=${{ secrets.VERCEL_TOKEN }}
@@ -29,7 +29,12 @@ jobs:
         run: vercel build --token=${{ secrets.VERCEL_TOKEN }}
 
       - name: Deploy Preview Project Artifacts to Vercel
-        run: vercel deploy --prebuilt --token=${{ secrets.VERCEL_TOKEN }}
+        run: |
+          for i in 1 2 3; do
+            vercel deploy --prebuilt --archive=tgz --token=${{ secrets.VERCEL_TOKEN }} && break
+            echo "Attempt $i failed, retrying in 15s..."
+            sleep 15
+          done
 
   Deploy-Production:
     if: github.ref == 'refs/heads/master'
@@ -40,7 +45,7 @@ jobs:
         uses: actions/checkout@v4
 
       - name: Install Vercel CLI
-        run: npm install --global vercel@latest
+        run: npm install --global vercel@39 # pin to a stable major version
 
       - name: Pull Vercel Production Environment Information
         run: vercel pull --yes --environment=production --token=${{ secrets.VERCEL_TOKEN }}
@@ -49,4 +54,9 @@ jobs:
         run: vercel build --prod --token=${{ secrets.VERCEL_TOKEN }}
 
       - name: Deploy Project Artifacts to Vercel Production
-        run: vercel deploy --prebuilt --prod --token=${{ secrets.VERCEL_TOKEN }}
+        run: |
+          for i in 1 2 3; do
+            vercel deploy --prebuilt --prod --archive=tgz --token=${{ secrets.VERCEL_TOKEN }} && break
+            echo "Attempt $i failed, retrying in 15s..."
+            sleep 15
+          done
