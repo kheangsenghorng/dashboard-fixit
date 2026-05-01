@@ -1,15 +1,15 @@
 import AdminShell from "../../AdminShell";
-import PaymentPage from "../../../../Components/admin/payment/PaymentPage";
+import AdminPayoutPage from "../../../../Components/admin/payouts/payouts";
 
 export const metadata = {
-  title: "Analytics – Admin Panel",
+  title: "Payouts – Admin Panel",
   description: "View system analytics",
 };
 
 export default function Page() {
   return (
     <AdminShell>
-      <PaymentPage />
+      <AdminPayoutPage />
     </AdminShell>
   );
 }
