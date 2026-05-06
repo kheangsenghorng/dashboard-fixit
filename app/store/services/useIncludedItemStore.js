@@ -1,0 +1,165 @@
+import { create } from "zustand";
+import { taskItemService } from "../../services/services/taskItemService";
+
+const getErrorMessage = (error, fallback = "Something went wrong") => {
+  if (error.response?.data?.message) {
+    return error.response.data.message;
+  }
+
+  if (error.response?.data?.errors) {
+    const errors = error.response.data.errors;
+
+    return Object.values(errors).flat().join(" ");
+  }
+
+  if (error.message) {
+    return error.message;
+  }
+
+  return fallback;
+};
+
+const getData = (res) => {
+  return res.data?.data || res.data || [];
+};
+
+const getSingleData = (res) => {
+  return res.data?.data || res.data || null;
+};
+
+export const useTaskItemStore = create((set, get) => ({
+  items: [],
+  item: null,
+  loading: false,
+  error: null,
+
+  getAll: async (params = {}) => {
+    set({ loading: true, error: null });
+
+    try {
+      const res = await taskItemService.getAll(params);
+
+      set({
+        items: getData(res),
+        loading: false,
+      });
+
+      return res.data;
+    } catch (error) {
+      const message = getErrorMessage(error, "Failed to fetch task items");
+
+      set({
+        error: message,
+        loading: false,
+      });
+
+      return null;
+    }
+  },
+
+  getOne: async (id) => {
+    set({ loading: true, error: null });
+
+    try {
+      const res = await taskItemService.getOne(id);
+
+      set({
+        item: getSingleData(res),
+        loading: false,
+      });
+
+      return res.data;
+    } catch (error) {
+      const message = getErrorMessage(error, "Failed to fetch task item");
+
+      set({
+        error: message,
+        loading: false,
+      });
+
+      return null;
+    }
+  },
+
+  create: async (data) => {
+    set({ loading: true, error: null });
+
+    try {
+      const res = await taskItemService.create(data);
+
+      await get().getAll();
+
+      set({ loading: false });
+
+      return res.data;
+    } catch (error) {
+      const message = getErrorMessage(error, "Failed to create task item");
+
+      set({
+        error: message,
+        loading: false,
+      });
+
+      return null;
+    }
+  },
+
+  update: async (id, data) => {
+    set({ loading: true, error: null });
+
+    try {
+      const res = await taskItemService.update(id, data);
+
+      await get().getAll();
+
+      set({ loading: false });
+
+      return res.data;
+    } catch (error) {
+      const message = getErrorMessage(error, "Failed to update task item");
+
+      set({
+        error: message,
+        loading: false,
+      });
+
+      return null;
+    }
+  },
+
+  remove: async (id) => {
+    set({ loading: true, error: null });
+
+    try {
+      const res = await taskItemService.remove(id);
+
+      set({
+        items: get().items.filter((item) => item.id !== id),
+        loading: false,
+      });
+
+      return res.data;
+    } catch (error) {
+      const message = getErrorMessage(error, "Failed to delete task item");
+
+      set({
+        error: message,
+        loading: false,
+      });
+
+      return null;
+    }
+  },
+
+  setItem: (item) => {
+    set({ item });
+  },
+
+  clearItem: () => {
+    set({ item: null });
+  },
+
+  clearError: () => {
+    set({ error: null });
+  },
+}));

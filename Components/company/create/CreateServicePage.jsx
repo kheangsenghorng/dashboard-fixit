@@ -9,6 +9,8 @@ import ContentLoader from "../../ContentLoader";
 import { useAuthGuard } from "../../../app/hooks/useAuthGuard";
 import { useServiceStoreCompany } from "../../../app/store/owner/useServiceStore";
 import { useTypeStoreCompany } from "../../../app/store/owner/useTypeStore";
+import { useTaskGroupStore } from "../../../app/store/services/useTaskGroupStore";
+import { useTaskItemStore } from "../../../app/store/services/useTaskItemStore";
 
 // Components
 import StepIndicator from "./service/StepIndicator";
@@ -22,7 +24,12 @@ import NavigationFooter from "./service/NavigationFooter";
 export default function CreateServicePage() {
   const router = useRouter();
   const { user: authUser } = useAuthGuard();
+
   const { createService, owners = [], fetchOwners } = useServiceStoreCompany();
+
+  const { create: createTaskGroup } = useTaskGroupStore();
+  const { create: createTaskItem } = useTaskItemStore();
+
   const {
     activeTypes = [],
     categories = [],
@@ -35,19 +42,35 @@ export default function CreateServicePage() {
   const [imageFiles, setImageFiles] = useState([]);
   const [previews, setPreviews] = useState([]);
 
-  // Updated Initial State to match Table Requirements
   const [formData, setFormData] = useState({
+    id: null,
+    service_id: null,
+
     owner_id: "",
     category_id: "",
     type_id: "",
     title: "",
     description: "",
-    status: "draft",
-    // Step 3
-    task_groups: [{ name: "General Area", items: [{ title: "" }] }],
-    // Step 4: Inventory
+    status: "active",
+
+    task_groups: [
+      {
+        name: "General Area",
+        description: null,
+        status: "active",
+        items: [
+          {
+            title: "",
+            description: null,
+            sort_order: 1,
+            status: "active",
+          },
+        ],
+      },
+    ],
+
     included_items: [{ name: "", description: "", status: "active" }],
-    // Step 5: Pricing Tiers (Now with all keys for the table)
+
     packages: [
       {
         title: "Standard",
@@ -68,42 +91,140 @@ export default function CreateServicePage() {
 
   useEffect(() => {
     fetchActiveCategories();
-    if (authUser?.role === "admin") fetchOwners();
+
+    if (authUser?.role === "admin") {
+      fetchOwners();
+    }
   }, []);
 
   useEffect(() => {
-    if (formData.category_id) fetchActiveTypes(formData.category_id);
+    if (formData.category_id) {
+      fetchActiveTypes(formData.category_id);
+    }
   }, [formData.category_id]);
 
-  const handleSubmit = async (e) => {
-    if (e) e.preventDefault();
+  const getCreatedService = (res) => {
+    return res?.data?.data || res?.data || res?.service || res || null;
+  };
+
+  const createBaseService = async () => {
     setLoading(true);
 
     try {
       const data = new FormData();
 
-      // Append basic fields and stringified objects
-      Object.keys(formData).forEach((key) => {
-        if (Array.isArray(formData[key]) || typeof formData[key] === "object") {
-          data.append(key, JSON.stringify(formData[key]));
-        } else {
-          data.append(key, formData[key]);
-        }
-      });
+      data.append("owner_id", formData.owner_id || "");
+      data.append("category_id", formData.category_id || "");
+      data.append("type_id", formData.type_id || "");
+      data.append("title", formData.title || "");
+      data.append("description", formData.description || "");
+      data.append("status", formData.status || "active");
 
-      // Append images
       imageFiles.forEach((file) => data.append("images[]", file));
 
       const res = await createService(data);
-      if (res.success) {
-        toast.success("Service deployed successfully!");
-        router.push(
-          authUser?.role === "admin" ? "/admin/services" : "/owner/services"
-        );
+      const createdService = getCreatedService(res);
+
+      if (res?.success && createdService?.id) {
+        setFormData((prev) => ({
+          ...prev,
+          id: createdService.id,
+          service_id: createdService.id,
+        }));
+
+        toast.success("Service created successfully!");
+        return createdService.id;
       }
+
+      toast.error("Failed to create service");
+      return null;
     } catch (error) {
-      console.error("Submission error:", error);
-      toast.error("Failed to sync service protocol");
+      console.error("Create service error:", error);
+      toast.error("Failed to create service");
+      return null;
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  const handleNextStep = async () => {
+    if (currentStep === 1) {
+      setCurrentStep(2);
+      return;
+    }
+
+    if (currentStep === 2 && !formData.service_id) {
+      const serviceId = await createBaseService();
+
+      if (!serviceId) return;
+    }
+
+    setCurrentStep((prev) => Math.min(prev + 1, 5));
+  };
+
+  const autoCreateChecklist = async () => {
+    const serviceId = formData.service_id;
+
+    if (!serviceId) {
+      toast.error("Please create the service first.");
+      return false;
+    }
+
+    for (const group of formData.task_groups || []) {
+      if (!group.name) continue;
+
+      const groupPayload = {
+        service_id: serviceId,
+        name: group.name,
+        description: group.description || null,
+        status: group.status || "active",
+      };
+
+      const groupRes = await createTaskGroup(groupPayload);
+      const savedGroup = groupRes?.data?.data || groupRes?.data || groupRes;
+
+      if (!savedGroup?.id) {
+        throw new Error("Failed to create task group");
+      }
+
+      for (let index = 0; index < (group.items || []).length; index++) {
+        const item = group.items[index];
+
+        if (!item.title) continue;
+
+        const itemPayload = {
+          task_group_id: savedGroup.id,
+          title: item.title,
+          description: item.description || null,
+          sort_order: item.sort_order || index + 1,
+          status: item.status || "active",
+        };
+
+        await createTaskItem(itemPayload);
+      }
+    }
+
+    return true;
+  };
+
+  const handleSubmit = async (e) => {
+    if (e) e.preventDefault();
+
+    setLoading(true);
+
+    try {
+      const success = await autoCreateChecklist();
+
+      if (!success) return;
+
+      toast.success("Service deployed successfully!");
+
+      router.push(
+        authUser?.role === "admin" ? "/admin/services" : "/owner/services"
+      );
+    } catch (error) {
+      console.error("Deploy service error:", error);
+      toast.error("Failed to deploy service checklist");
     } finally {
       setLoading(false);
     }
@@ -120,7 +241,6 @@ export default function CreateServicePage() {
 
   return (
     <div className="min-h-screen bg-[#F8FAFC] pb-40">
-      {/* Increased max-width to 7xl to accommodate tables comfortably */}
       <main className="max-w-7xl mx-auto px-6 pt-10">
         <div className="mb-10">
           <StepIndicator
@@ -169,9 +289,10 @@ export default function CreateServicePage() {
           currentStep={currentStep}
           setCurrentStep={setCurrentStep}
           typeId={formData.type_id}
-          // Pass handleSubmit to the footer if the last step needs a "Finish" button
+          onNext={handleNextStep}
           onSubmit={handleSubmit}
           totalSteps={5}
+          loading={loading}
         />
       </main>
     </div>

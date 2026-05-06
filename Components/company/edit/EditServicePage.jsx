@@ -9,7 +9,7 @@ import ContentLoader from "../../ContentLoader";
 import { useAuthGuard } from "../../../app/hooks/useAuthGuard";
 import { useServiceStoreCompany } from "../../../app/store/owner/useServiceStore";
 import { useTypeStoreCompany } from "../../../app/store/owner/useTypeStore";
-import StepIndicator from "../create/service/StepIndicator";
+
 import Step1Classification from "./service/Step1Classification";
 import Step2Identity from "./service/Step2Identity";
 
@@ -17,6 +17,7 @@ import Step4Checklist from "./service/Step4Checklist";
 import Step5Inventory from "./service/Step5Inventory";
 import Step6Pricing from "./service/Step6Pricing";
 import NavigationFooter from "./service/NavigationFooter";
+import StepIndicator from "./service/StepIndicator";
 
 export default function EditServicePage() {
   const { id } = useParams();
