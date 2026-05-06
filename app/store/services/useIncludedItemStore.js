@@ -1,5 +1,5 @@
 import { create } from "zustand";
-import { taskItemService } from "../../services/services/taskItemService";
+import { includedItemService } from "../../services/services/includedItemService";
 
 const getErrorMessage = (error, fallback = "Something went wrong") => {
   if (error.response?.data?.message) {
@@ -27,9 +27,9 @@ const getSingleData = (res) => {
   return res.data?.data || res.data || null;
 };
 
-export const useTaskItemStore = create((set, get) => ({
-  items: [],
-  item: null,
+export const useIncludedItemStore = create((set, get) => ({
+  includedItems: [],
+  includedItem: null,
   loading: false,
   error: null,
 
@@ -37,16 +37,16 @@ export const useTaskItemStore = create((set, get) => ({
     set({ loading: true, error: null });
 
     try {
-      const res = await taskItemService.getAll(params);
+      const res = await includedItemService.getAll(params);
 
       set({
-        items: getData(res),
+        includedItems: getData(res),
         loading: false,
       });
 
       return res.data;
     } catch (error) {
-      const message = getErrorMessage(error, "Failed to fetch task items");
+      const message = getErrorMessage(error, "Failed to fetch included items");
 
       set({
         error: message,
@@ -61,16 +61,16 @@ export const useTaskItemStore = create((set, get) => ({
     set({ loading: true, error: null });
 
     try {
-      const res = await taskItemService.getOne(id);
+      const res = await includedItemService.getOne(id);
 
       set({
-        item: getSingleData(res),
+        includedItem: getSingleData(res),
         loading: false,
       });
 
       return res.data;
     } catch (error) {
-      const message = getErrorMessage(error, "Failed to fetch task item");
+      const message = getErrorMessage(error, "Failed to fetch included item");
 
       set({
         error: message,
@@ -85,7 +85,7 @@ export const useTaskItemStore = create((set, get) => ({
     set({ loading: true, error: null });
 
     try {
-      const res = await taskItemService.create(data);
+      const res = await includedItemService.create(data);
 
       await get().getAll();
 
@@ -93,7 +93,7 @@ export const useTaskItemStore = create((set, get) => ({
 
       return res.data;
     } catch (error) {
-      const message = getErrorMessage(error, "Failed to create task item");
+      const message = getErrorMessage(error, "Failed to create included item");
 
       set({
         error: message,
@@ -108,7 +108,7 @@ export const useTaskItemStore = create((set, get) => ({
     set({ loading: true, error: null });
 
     try {
-      const res = await taskItemService.update(id, data);
+      const res = await includedItemService.update(id, data);
 
       await get().getAll();
 
@@ -116,7 +116,7 @@ export const useTaskItemStore = create((set, get) => ({
 
       return res.data;
     } catch (error) {
-      const message = getErrorMessage(error, "Failed to update task item");
+      const message = getErrorMessage(error, "Failed to update included item");
 
       set({
         error: message,
@@ -131,16 +131,16 @@ export const useTaskItemStore = create((set, get) => ({
     set({ loading: true, error: null });
 
     try {
-      const res = await taskItemService.remove(id);
+      const res = await includedItemService.remove(id);
 
       set({
-        items: get().items.filter((item) => item.id !== id),
+        includedItems: get().includedItems.filter((item) => item.id !== id),
         loading: false,
       });
 
       return res.data;
     } catch (error) {
-      const message = getErrorMessage(error, "Failed to delete task item");
+      const message = getErrorMessage(error, "Failed to delete included item");
 
       set({
         error: message,
@@ -151,12 +151,12 @@ export const useTaskItemStore = create((set, get) => ({
     }
   },
 
-  setItem: (item) => {
-    set({ item });
+  setIncludedItem: (includedItem) => {
+    set({ includedItem });
   },
 
-  clearItem: () => {
-    set({ item: null });
+  clearIncludedItem: () => {
+    set({ includedItem: null });
   },
 
   clearError: () => {
