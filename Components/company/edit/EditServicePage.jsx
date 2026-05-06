@@ -31,6 +31,7 @@ export default function EditServicePage() {
     fetchOneService,
     owners = [],
     fetchOwners,
+    deleteServiceImage,
   } = useServiceStoreCompany();
 
   const {
@@ -44,8 +45,9 @@ export default function EditServicePage() {
   const [submitLoading, setSubmitLoading] = useState(false);
   const [currentStep, setCurrentStep] = useState(1);
 
-  const [imageFiles, setImageFiles] = useState([]);
-  const [previews, setPreviews] = useState([]);
+  const [existingImages, setExistingImages] = useState([]);
+  const [newImageFiles, setNewImageFiles] = useState([]);
+  const [newPreviews, setNewPreviews] = useState([]);
 
   const [formData, setFormData] = useState({
     id: null,
@@ -162,8 +164,8 @@ export default function EditServicePage() {
       name: item.name || "",
       description: item.description || "",
       image: null,
-      image_preview: item.image_url || null,
-      image_url: item.image_url || null,
+      image_preview: item.image_url || item.url || null,
+      image_url: item.image_url || item.url || null,
       status: item.status || "active",
     }));
   };
@@ -218,6 +220,17 @@ export default function EditServicePage() {
         included_item_indices: includedItemIndices,
       };
     });
+  };
+
+  const normalizeExistingImages = (images = []) => {
+    if (!Array.isArray(images)) return [];
+
+    return images
+      .map((image) => ({
+        path: image.path || image.image_path || image.storage_path || "",
+        url: image.url || image.image_url || "",
+      }))
+      .filter((image) => image.url);
   };
 
   useEffect(() => {
@@ -276,13 +289,10 @@ export default function EditServicePage() {
           packages: normalizedPackages,
         });
 
-        const existingPreviews = Array.isArray(service.images)
-          ? service.images
-              .map((image) => image.image_url || image.url)
-              .filter(Boolean)
-          : [];
+        const normalizedImages = normalizeExistingImages(service.images || []);
 
-        setPreviews(existingPreviews);
+
+        setExistingImages(normalizedImages);
       } catch (error) {
         console.error("Fetch service error:", error);
         toast.error("Failed to load service data.");
@@ -337,7 +347,7 @@ export default function EditServicePage() {
 
       data.append("packages", JSON.stringify(formData.packages || []));
 
-      imageFiles.forEach((file) => {
+      newImageFiles.forEach((file) => {
         data.append("images[]", file);
       });
 
@@ -351,7 +361,6 @@ export default function EditServicePage() {
 
       if (res?.success || res?.data || res?.id) {
         toast.success("Service updated successfully!");
-
         router.push(isAdmin ? "/admin/services" : "/owner/services");
         return;
       }
@@ -397,13 +406,17 @@ export default function EditServicePage() {
 
           {currentStep === 2 && (
             <Step2Identity
+              id={id}
               formData={formData}
               setFormData={setFormData}
               authUser={authUser}
               owners={owners}
-              previews={previews}
-              setPreviews={setPreviews}
-              setImageFiles={setImageFiles}
+              existingImages={existingImages}
+              setExistingImages={setExistingImages}
+              newPreviews={newPreviews}
+              setNewPreviews={setNewPreviews}
+              setNewImageFiles={setNewImageFiles}
+              deleteServiceImage={deleteServiceImage}
             />
           )}
 

@@ -1,12 +1,13 @@
 import { create } from "zustand";
 import { ownerServiceService } from "../../services/owner/ownerServiceService";
 
-
 export const useServiceStoreCompany = create((set, get) => ({
   services: [],
   meta: null,
   serviceStats: null,
   loading: false,
+  service: null,
+  error: null,
 
   /*
   |--------------------------------------------------------------------------
@@ -31,12 +32,33 @@ export const useServiceStoreCompany = create((set, get) => ({
   },
 
   fetchOneService: async (id) => {
+    set({ loading: true, error: null });
+
     try {
       const res = await ownerServiceService.getOne(id);
-      return res.data.data;
+
+      const service = res?.data?.data || res?.data || null;
+
+      set({
+        service,
+        loading: false,
+      });
+
+      return service;
     } catch (error) {
       console.error("Fetch service error:", error);
-      throw error.response?.data || { message: "Failed to fetch service" };
+
+      const message =
+        error.response?.data?.message ||
+        error.message ||
+        "Failed to fetch service";
+
+      set({
+        error: message,
+        loading: false,
+      });
+
+      throw error.response?.data || { message };
     }
   },
 
@@ -118,21 +140,19 @@ export const useServiceStoreCompany = create((set, get) => ({
     }
   },
 
- /*
+  /*
   |--------------------------------------------------------------------------
   | Delete Service Image
   |--------------------------------------------------------------------------
   */
-    deleteServiceImage: async (serviceId, image) => {
-      try {
-    
-        const res = await ownerServiceService.deleteImage(serviceId, image);
-    
-        return res.data;
-    
-      } catch (error) {
-        console.error("Delete image error:", error);
-        throw error.response?.data || { message: "Delete image failed" };
-      }
-    },
+  deleteServiceImage: async (serviceId, image) => {
+    try {
+      const res = await ownerServiceService.deleteImage(serviceId, image);
+
+      return res.data;
+    } catch (error) {
+      console.error("Delete image error:", error);
+      throw error.response?.data || { message: "Delete image failed" };
+    }
+  },
 }));
