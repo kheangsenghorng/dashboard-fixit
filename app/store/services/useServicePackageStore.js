@@ -28,6 +28,10 @@ const getSingleData = (res) => {
 export const useServicePackageStore = create((set, get) => ({
   items: [],
   item: null,
+
+  // for included_items only
+  inventoryItems: [],
+
   loading: false,
   error: null,
 
@@ -100,6 +104,45 @@ export const useServicePackageStore = create((set, get) => ({
     }
   },
 
+  // ✅ New: get only included_items by service id
+  getByServiceIdInventory: async (serviceId) => {
+    set({ loading: true, error: null });
+
+    try {
+      const res = await servicePackageService.getByServiceIdInventory(
+        serviceId
+      );
+
+      const packages = res.data?.data || [];
+
+      // API returns packages, so extract included_items from all packages
+      const inventoryItems = packages
+        .flatMap((pkg) => pkg.included_items || [])
+        .map((item) => ({
+          ...item,
+          image: null,
+          preview: item.image_url || null,
+        }));
+
+      set({
+        inventoryItems,
+        loading: false,
+      });
+
+      return inventoryItems;
+    } catch (error) {
+      set({
+        inventoryItems: [],
+        error: getErrorMessage(
+          error,
+          "Failed to fetch included items by service"
+        ),
+        loading: false,
+      });
+
+      return [];
+    }
+  },
   create: async (data) => {
     set({ loading: true, error: null });
 
@@ -222,6 +265,10 @@ export const useServicePackageStore = create((set, get) => ({
 
   clearItem: () => {
     set({ item: null });
+  },
+
+  clearInventoryItems: () => {
+    set({ inventoryItems: [] });
   },
 
   clearError: () => {

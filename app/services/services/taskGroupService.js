@@ -1,11 +1,16 @@
 import api from "@/lib/api";
 
+
 export const taskGroupService = {
   // Get all task groups
   getAll: (params) => api.get("/owner/task-groups", { params }),
 
   // Get single task group
   getOne: (id) => api.get(`/owner/task-groups/${id}`),
+
+  // Get task groups by service  ID
+  getByServiceId: (serviceId) =>
+    api.get(`/owner/task-groups/service/${serviceId}`),
 
   // Create task group
   create: (data) =>

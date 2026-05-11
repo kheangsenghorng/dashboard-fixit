@@ -7,6 +7,10 @@ export const includedItemService = {
   // Get single included item
   getOne: (id) => api.get(`/owner/included-items/${id}`),
 
+  // Get included items by service  ID
+  getByServiceId: (serviceId) =>
+    api.get(`/owner/included-items/service/${serviceId}`),
+
   // Create included item
   create: (data) =>
     api.post("/owner/included-items", data, {

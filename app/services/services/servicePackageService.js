@@ -7,6 +7,13 @@ export const servicePackageService = {
   // Get single service package
   getOne: (id) => api.get(`/owner/service-packages/${id}`),
 
+  // Get service packages by service  ID
+  getByServiceId: (serviceId) =>
+    api.get(`/owner/service-packages/service/${serviceId}`),
+
+  getByServiceIdInventory: (serviceId) =>
+    api.get(`/owner/service-packages/service/${serviceId}/included-items`),
+
   // Get service packages by service ID
   getByServiceId: (serviceId) =>
     api.get(`/owner/service-packages/service/${serviceId}`),

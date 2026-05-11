@@ -1,6 +1,6 @@
 "use client";
 
-import React, { useState, useEffect } from "react";
+import React, { useEffect, useMemo, useState } from "react";
 import { useRouter, useParams } from "next/navigation";
 import { toast } from "react-toastify";
 import ContentLoader from "../../ContentLoader";
@@ -18,6 +18,198 @@ import Step3Checklist from "./service/Step3Checklist";
 import Step4Inventory from "./service/Step4Inventory";
 import Step5Pricing from "./service/Step5Pricing";
 import NavigationFooter from "./service/NavigationFooter";
+
+const createEmptyTaskGroup = (serviceId = null) => ({
+  id: null,
+  service_id: serviceId,
+  name: "",
+  description: null,
+  status: "active",
+  sort_order: 1,
+  items: [
+    {
+      id: null,
+      task_group_id: null,
+      title: "",
+      description: null,
+      sort_order: 1,
+      status: "active",
+    },
+  ],
+});
+
+const createEmptyIncludedItem = () => ({
+  id: null,
+  service_id: null,
+  name: "",
+  description: "",
+  image: null,
+  preview: null,
+  image_preview: null,
+  image_url: null,
+  status: "active",
+  sort_order: 1,
+});
+
+const createEmptyPackage = () => ({
+  id: null,
+  title: "",
+  description: "",
+  price: "",
+  billing_type: "one_time",
+  min_area_m2: "",
+  max_area_m2: "",
+  floor_number: "",
+  bedrooms: "",
+  duration_hours: "",
+  workers_count: "",
+  status: "active",
+  sort_order: 1,
+  included_item_indices: [],
+  task_group_indices: [],
+});
+
+const buildInitialFormData = () => ({
+  id: null,
+  service_id: null,
+
+  package_id: null,
+  selected_package: null,
+
+  owner_id: "",
+  category_id: "",
+  type_id: "",
+  title: "",
+  description: "",
+  status: "active",
+
+  task_groups: [createEmptyTaskGroup()],
+  included_items: [createEmptyIncludedItem()],
+  packages: [createEmptyPackage()],
+});
+
+const getServiceData = (res) => {
+  return res?.data?.data || res?.data || res?.service || res || null;
+};
+
+const normalizeExistingImages = (images = []) => {
+  if (!Array.isArray(images)) return [];
+
+  return images
+    .map((image) => ({
+      path: image.path || image.image_path || image.storage_path || "",
+      url: image.url || image.image_url || "",
+    }))
+    .filter((image) => image.url);
+};
+
+const normalizeTaskGroups = (groups = [], serviceId = null) => {
+  if (!Array.isArray(groups) || groups.length === 0) {
+    return [createEmptyTaskGroup(serviceId)];
+  }
+
+  return groups.map((group, groupIndex) => ({
+    id: group.id || null,
+    service_id: group.service_id || serviceId,
+    name: group.name || "",
+    description: group.description || null,
+    status: group.status || "active",
+    sort_order: group.sort_order || groupIndex + 1,
+    items: (group.items || group.task_items || []).map((item, itemIndex) => ({
+      id: item.id || null,
+      task_group_id: item.task_group_id || group.id || null,
+      title: item.title || "",
+      description: item.description || null,
+      sort_order: item.sort_order || itemIndex + 1,
+      status: item.status || "active",
+    })),
+  }));
+};
+
+const normalizeIncludedItems = (items = [], serviceId = null) => {
+  if (!Array.isArray(items) || items.length === 0) {
+    return [createEmptyIncludedItem()];
+  }
+
+  return items.map((item, index) => ({
+    id: item.id || null,
+    service_id: item.service_id || serviceId,
+    name: item.name || "",
+    description: item.description || "",
+    image: null,
+    preview: null,
+    image_preview: item.image_url || item.url || null,
+    image_url: item.image_url || item.url || null,
+    status: item.status || "active",
+    sort_order: item.sort_order || index + 1,
+  }));
+};
+
+const getPackageIncludedItemIds = (pkg) => {
+  const items =
+    pkg.included_items ||
+    pkg.package_included_items ||
+    pkg.packageIncludedItems ||
+    [];
+
+  return items.map((item) => item.included_item_id || item.id).filter(Boolean);
+};
+
+const getPackageTaskGroupIds = (pkg) => {
+  const groups =
+    pkg.task_groups || pkg.package_task_groups || pkg.packageTaskGroups || [];
+
+  return groups.map((group) => group.task_group_id || group.id).filter(Boolean);
+};
+
+const normalizePackages = (
+  packages = [],
+  includedItems = [],
+  taskGroups = []
+) => {
+  if (!Array.isArray(packages) || packages.length === 0) {
+    return [createEmptyPackage()];
+  }
+
+  return packages.map((pkg, packageIndex) => {
+    const includedItemIds = getPackageIncludedItemIds(pkg);
+    const taskGroupIds = getPackageTaskGroupIds(pkg);
+
+    const includedItemIndices = includedItemIds
+      .map((includedItemId) =>
+        includedItems.findIndex(
+          (item) => Number(item.id) === Number(includedItemId)
+        )
+      )
+      .filter((index) => index !== -1);
+
+    const taskGroupIndices = taskGroupIds
+      .map((taskGroupId) =>
+        taskGroups.findIndex(
+          (group) => Number(group.id) === Number(taskGroupId)
+        )
+      )
+      .filter((index) => index !== -1);
+
+    return {
+      id: pkg.id || null,
+      title: pkg.title || "",
+      description: pkg.description || "",
+      price: pkg.price || "",
+      billing_type: pkg.billing_type || "one_time",
+      min_area_m2: pkg.min_area_m2 || "",
+      max_area_m2: pkg.max_area_m2 || "",
+      floor_number: pkg.floor_number || "",
+      bedrooms: pkg.bedrooms || "",
+      duration_hours: pkg.duration_hours || "",
+      workers_count: pkg.workers_count || "",
+      status: pkg.status || "active",
+      sort_order: pkg.sort_order || packageIndex + 1,
+      included_item_indices: includedItemIndices,
+      task_group_indices: taskGroupIndices,
+    };
+  });
+};
 
 export default function EditServicePage() {
   const { id } = useParams();
@@ -49,189 +241,11 @@ export default function EditServicePage() {
   const [newImageFiles, setNewImageFiles] = useState([]);
   const [newPreviews, setNewPreviews] = useState([]);
 
-  const [formData, setFormData] = useState({
-    id: null,
-    service_id: null,
+  const [formData, setFormData] = useState(buildInitialFormData);
 
-    owner_id: "",
-    category_id: "",
-    type_id: "",
-    title: "",
-    description: "",
-    status: "active",
-
-    task_groups: [
-      {
-        name: "",
-        description: null,
-        status: "active",
-        items: [
-          {
-            title: "",
-            description: null,
-            sort_order: 1,
-            status: "active",
-          },
-        ],
-      },
-    ],
-
-    included_items: [
-      {
-        name: "",
-        description: "",
-        image: null,
-        image_preview: null,
-        image_url: null,
-        status: "active",
-      },
-    ],
-
-    packages: [
-      {
-        title: "",
-        description: "",
-        price: "",
-        billing_type: "one_time",
-        min_area_m2: "",
-        max_area_m2: "",
-        floor_number: "",
-        bedrooms: "",
-        duration_hours: "",
-        workers_count: "",
-        status: "active",
-        included_item_indices: [],
-      },
-    ],
-  });
-
-  const getServiceData = (res) => {
-    return res?.data?.data || res?.data || res?.service || res || null;
-  };
-
-  const normalizeTaskGroups = (groups = []) => {
-    if (!Array.isArray(groups) || groups.length === 0) {
-      return [
-        {
-          name: "",
-          description: null,
-          status: "active",
-          items: [
-            {
-              title: "",
-              description: null,
-              sort_order: 1,
-              status: "active",
-            },
-          ],
-        },
-      ];
-    }
-
-    return groups.map((group) => ({
-      id: group.id,
-      name: group.name || "",
-      description: group.description || null,
-      status: group.status || "active",
-      items: Array.isArray(group.items)
-        ? group.items.map((item, index) => ({
-            id: item.id,
-            title: item.title || "",
-            description: item.description || null,
-            sort_order: item.sort_order || index + 1,
-            status: item.status || "active",
-          }))
-        : [],
-    }));
-  };
-
-  const normalizeIncludedItems = (items = []) => {
-    if (!Array.isArray(items) || items.length === 0) {
-      return [
-        {
-          name: "",
-          description: "",
-          image: null,
-          image_preview: null,
-          image_url: null,
-          status: "active",
-        },
-      ];
-    }
-
-    return items.map((item) => ({
-      id: item.id,
-      name: item.name || "",
-      description: item.description || "",
-      image: null,
-      image_preview: item.image_url || item.url || null,
-      image_url: item.image_url || item.url || null,
-      status: item.status || "active",
-    }));
-  };
-
-  const normalizePackages = (packages = [], includedItems = []) => {
-    if (!Array.isArray(packages) || packages.length === 0) {
-      return [
-        {
-          title: "",
-          description: "",
-          price: "",
-          billing_type: "one_time",
-          min_area_m2: "",
-          max_area_m2: "",
-          floor_number: "",
-          bedrooms: "",
-          duration_hours: "",
-          workers_count: "",
-          status: "active",
-          included_item_indices: [],
-        },
-      ];
-    }
-
-    return packages.map((pkg) => {
-      const packageIncludedItems =
-        pkg.included_items || pkg.package_included_items || pkg.items || [];
-
-      const includedItemIds = packageIncludedItems
-        .map((item) => item.included_item_id || item.id)
-        .filter(Boolean);
-
-      const includedItemIndices = includedItemIds
-        .map((includedItemId) =>
-          includedItems.findIndex((item) => item.id === includedItemId)
-        )
-        .filter((index) => index !== -1);
-
-      return {
-        id: pkg.id,
-        title: pkg.title || "",
-        description: pkg.description || "",
-        price: pkg.price || "",
-        billing_type: pkg.billing_type || "one_time",
-        min_area_m2: pkg.min_area_m2 || "",
-        max_area_m2: pkg.max_area_m2 || "",
-        floor_number: pkg.floor_number || "",
-        bedrooms: pkg.bedrooms || "",
-        duration_hours: pkg.duration_hours || "",
-        workers_count: pkg.workers_count || "",
-        status: pkg.status || "active",
-        included_item_indices: includedItemIndices,
-      };
-    });
-  };
-
-  const normalizeExistingImages = (images = []) => {
-    if (!Array.isArray(images)) return [];
-
-    return images
-      .map((image) => ({
-        path: image.path || image.image_path || image.storage_path || "",
-        url: image.url || image.image_url || "",
-      }))
-      .filter((image) => image.url);
-  };
+  const redirectPath = useMemo(() => {
+    return isAdmin ? "/admin/services" : "/owner/services";
+  }, [isAdmin]);
 
   useEffect(() => {
     const initEdit = async () => {
@@ -261,21 +275,30 @@ export default function EditServicePage() {
         }
 
         const normalizedTaskGroups = normalizeTaskGroups(
-          service.task_groups || service.taskGroups || []
+          service.task_groups || service.taskGroups || [],
+          service.id
         );
 
         const normalizedIncludedItems = normalizeIncludedItems(
-          service.included_items || service.includedItems || []
+          service.included_items || service.includedItems || [],
+          service.id
         );
 
         const normalizedPackages = normalizePackages(
           service.packages || service.service_packages || [],
-          normalizedIncludedItems
+          normalizedIncludedItems,
+          normalizedTaskGroups
         );
+
+        const firstPackageWithId =
+          normalizedPackages.find((pkg) => pkg.id) || normalizedPackages[0];
 
         setFormData({
           id: service.id,
           service_id: service.id,
+
+          package_id: firstPackageWithId?.id || null,
+          selected_package: firstPackageWithId || null,
 
           owner_id: service.owner_id?.toString() || "",
           category_id: categoryId?.toString() || "",
@@ -289,10 +312,7 @@ export default function EditServicePage() {
           packages: normalizedPackages,
         });
 
-        const normalizedImages = normalizeExistingImages(service.images || []);
-
-
-        setExistingImages(normalizedImages);
+        setExistingImages(normalizeExistingImages(service.images || []));
       } catch (error) {
         console.error("Fetch service error:", error);
         toast.error("Failed to load service data.");
@@ -302,73 +322,70 @@ export default function EditServicePage() {
     };
 
     initEdit();
-  }, [id]);
+  }, [
+    id,
+    isAdmin,
+    fetchOneService,
+    fetchOwners,
+    fetchActiveCategories,
+    fetchActiveTypes,
+  ]);
 
   useEffect(() => {
     if (formData.category_id) {
       fetchActiveTypes(formData.category_id);
     }
-  }, [formData.category_id]);
+  }, [formData.category_id, fetchActiveTypes]);
 
   const handleNextStep = () => {
     setCurrentStep((prev) => Math.min(prev + 1, 5));
   };
 
-  const handleSubmit = async (e) => {
-    if (e) e.preventDefault();
+  const buildCategoryTypeFormData = () => {
+    const data = new FormData();
+
+    data.append("_method", "PUT");
+    data.append("category_id", formData.category_id || "");
+    data.append("type_id", formData.type_id || "");
+
+    return data;
+  };
+
+  const handleSubmit = async (event) => {
+    if (event) event.preventDefault();
+
+    if (!formData.category_id) {
+      toast.error("Please select category");
+      return;
+    }
+
+    if (!formData.type_id) {
+      toast.error("Please select type");
+      return;
+    }
 
     setSubmitLoading(true);
 
     try {
-      const data = new FormData();
-
-      data.append("_method", "PUT");
-      data.append("owner_id", formData.owner_id || "");
-      data.append("category_id", formData.category_id || "");
-      data.append("type_id", formData.type_id || "");
-      data.append("title", formData.title || "");
-      data.append("description", formData.description || "");
-      data.append("status", formData.status || "active");
-
-      data.append("task_groups", JSON.stringify(formData.task_groups || []));
-
-      data.append(
-        "included_items",
-        JSON.stringify(
-          (formData.included_items || []).map((item) => ({
-            id: item.id || null,
-            name: item.name || "",
-            description: item.description || "",
-            image_url: item.image_url || null,
-            status: item.status || "active",
-          }))
-        )
-      );
-
-      data.append("packages", JSON.stringify(formData.packages || []));
-
-      newImageFiles.forEach((file) => {
-        data.append("images[]", file);
-      });
-
-      (formData.included_items || []).forEach((item, index) => {
-        if (item.image) {
-          data.append(`included_item_images[${index}]`, item.image);
-        }
-      });
+      const data = buildCategoryTypeFormData();
 
       const res = await updateService(id, data);
 
       if (res?.success || res?.data || res?.id) {
-        toast.success("Service updated successfully!");
-        router.push(isAdmin ? "/admin/services" : "/owner/services");
+        toast.success("Category and type updated successfully!");
+        router.push(redirectPath);
         return;
       }
 
-      toast.error("Failed to update service.");
+      toast.error(res?.message || "Failed to update category/type.");
     } catch (error) {
-      console.error("Update service error:", error);
-      toast.error(error.message || "Failed to update service.");
+      console.error("Update category/type error:", error);
+
+      toast.error(
+        error?.response?.data?.message ||
+          error?.message ||
+          "Failed to update category/type."
+      );
     } finally {
       setSubmitLoading(false);
     }
@@ -391,6 +408,7 @@ export default function EditServicePage() {
             currentStep={currentStep}
             setCurrentStep={setCurrentStep}
             categoryId={formData.category_id}
+            typeId={formData.type_id}
           />
         </div>
 
@@ -440,7 +458,6 @@ export default function EditServicePage() {
           onNext={handleNextStep}
           onSubmit={handleSubmit}
           totalSteps={5}
-          loading={submitLoading}
           isLoading={submitLoading}
         />
       </main>

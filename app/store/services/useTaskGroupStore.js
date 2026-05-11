@@ -75,6 +75,29 @@ export const useTaskGroupStore = create((set, get) => ({
     }
   },
 
+  getByServiceId: async (serviceId) => {
+    set({ loading: true, error: null });
+
+    try {
+      const res = await taskGroupService.getByServiceId(serviceId);
+
+      set({
+        items: getListData(res),
+        loading: false,
+      });
+
+      return res.data;
+    } catch (error) {
+      set({
+        error: getErrorMessage(error, "Failed to fetch task groups by service"),
+        loading: false,
+      });
+
+      return null;
+    }
+  },
+
+
   create: async (data) => {
     set({ loading: true, error: null });
 
