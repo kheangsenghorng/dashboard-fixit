@@ -1,536 +1,466 @@
 "use client";
 
-import React, { useState, useEffect, useRef } from "react";
-import {
-  ArrowLeft,
-  Upload,
-  X,
-  Save,
-  Loader2,
-  FileText,
-  DollarSign,
-  Clock,
-  ImageIcon,
-  Trash2,
-} from "lucide-react";
+import React, { useEffect, useMemo, useState } from "react";
 import { useRouter, useParams } from "next/navigation";
 import { toast } from "react-toastify";
-import Image from "next/image";
+import ContentLoader from "../../ContentLoader";
 
-// Hooks & Stores
+// Stores
 import { useAuthGuard } from "../../../app/hooks/useAuthGuard";
 import { useServiceStoreCompany } from "../../../app/store/owner/useServiceStore";
 import { useTypeStoreCompany } from "../../../app/store/owner/useTypeStore";
-import ContentLoader from "../../ContentLoader";
 
-// ─────────────────────────────────────────────
-// Sub-components
-// ─────────────────────────────────────────────
+// Components
+import StepIndicator from "./service/StepIndicator";
+import Step1Classification from "./service/Step1Classification";
+import Step2Identity from "./service/Step2Identity";
+import Step3Checklist from "./service/Step3Checklist";
+import Step4Inventory from "./service/Step4Inventory";
+import Step5Pricing from "./service/Step5Pricing";
+import NavigationFooter from "./service/NavigationFooter";
 
-function SectionCard({ icon, title, children }) {
-  return (
-    <div className="bg-white rounded-2xl border border-slate-100 shadow-sm p-6 md:p-8">
-      <div className="flex items-center gap-3 mb-6 pb-5 border-b border-slate-100">
-        <div className="w-9 h-9 rounded-xl bg-slate-50 flex items-center justify-center text-slate-500">
-          {icon}
-        </div>
-        <h2 className="text-base font-semibold text-slate-800">{title}</h2>
-      </div>
-      {children}
-    </div>
-  );
-}
+const createEmptyTaskGroup = (serviceId = null) => ({
+  id: null,
+  service_id: serviceId,
+  name: "",
+  description: null,
+  status: "active",
+  sort_order: 1,
+  items: [
+    {
+      id: null,
+      task_group_id: null,
+      title: "",
+      description: null,
+      sort_order: 1,
+      status: "active",
+    },
+  ],
+});
 
-function FieldLabel({ children }) {
-  return (
-    <label className="block text-xs font-semibold uppercase tracking-wider text-slate-400 mb-1.5">
-      {children}
-    </label>
-  );
-}
+const createEmptyIncludedItem = () => ({
+  id: null,
+  service_id: null,
+  name: "",
+  description: "",
+  image: null,
+  preview: null,
+  image_preview: null,
+  image_url: null,
+  status: "active",
+  sort_order: 1,
+});
 
-function TextInput({
-  name,
-  value,
-  onChange,
-  type = "text",
-  required,
-  placeholder,
-  className = "",
-}) {
-  return (
-    <input
-      type={type}
-      name={name}
-      value={value}
-      onChange={onChange}
-      required={required}
-      placeholder={placeholder}
-      className={`w-full px-4 py-3 rounded-xl bg-slate-50 border border-slate-200 text-slate-800
-        placeholder:text-slate-300 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent
-        transition-all ${className}`}
-    />
-  );
-}
-
-function SelectInput({ name, value, onChange, required, children }) {
-  return (
-    <select
-      name={name}
-      value={value}
-      onChange={onChange}
-      required={required}
-      className="w-full px-4 py-3 rounded-xl bg-slate-50 border border-slate-200 text-slate-800
-        focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent transition-all"
-    >
-      {children}
-    </select>
-  );
-}
-
-function ImageThumbnail({ src, onRemove, isNew }) {
-  return (
-    <div className="relative aspect-square group rounded-xl overflow-hidden border border-slate-200 shadow-sm">
-      <Image src={src} fill className="object-cover" alt="" unoptimized />
-      <div className="absolute inset-0 bg-black/0 group-hover:bg-black/20 transition-all" />
-      <button
-        type="button"
-        onClick={onRemove}
-        className="absolute top-2 right-2 p-1.5 rounded-lg text-white shadow-md
-          opacity-0 group-hover:opacity-100 transition-opacity
-          bg-red-500 hover:bg-red-600"
-      >
-        {isNew ? <X size={13} /> : <Trash2 size={13} />}
-      </button>
-      {isNew && (
-        <span
-          className="absolute bottom-1.5 left-1.5 text-[9px] font-bold uppercase tracking-wide
-          bg-blue-500 text-white px-1.5 py-0.5 rounded-md"
-        >
-          New
-        </span>
-      )}
-    </div>
-  );
-}
-
-// ─────────────────────────────────────────────
-// Main Page
-// ─────────────────────────────────────────────
-
-const INITIAL_FORM = {
+const createEmptyPackage = () => ({
+  id: null,
   title: "",
   description: "",
+  price: "",
+  billing_type: "one_time",
+  min_area_m2: "",
+  max_area_m2: "",
+  floor_number: "",
+  bedrooms: "",
+  duration_hours: "",
+  workers_count: "",
+  status: "active",
+  sort_order: 1,
+  included_item_indices: [],
+  task_group_indices: [],
+});
+
+const buildInitialFormData = () => ({
+  id: null,
+  service_id: null,
+
+  package_id: null,
+  selected_package: null,
+
+  owner_id: "",
   category_id: "",
   type_id: "",
-  base_price: "",
-  duration: "",
-  owner_id: "",
+  title: "",
+  description: "",
+  status: "active",
+
+  task_groups: [createEmptyTaskGroup()],
+  included_items: [createEmptyIncludedItem()],
+  packages: [createEmptyPackage()],
+});
+
+const getServiceData = (res) => {
+  return res?.data?.data || res?.data || res?.service || res || null;
+};
+
+const normalizeExistingImages = (images = []) => {
+  if (!Array.isArray(images)) return [];
+
+  return images
+    .map((image) => ({
+      path: image.path || image.image_path || image.storage_path || "",
+      url: image.url || image.image_url || "",
+    }))
+    .filter((image) => image.url);
+};
+
+const normalizeTaskGroups = (groups = [], serviceId = null) => {
+  if (!Array.isArray(groups) || groups.length === 0) {
+    return [createEmptyTaskGroup(serviceId)];
+  }
+
+  return groups.map((group, groupIndex) => ({
+    id: group.id || null,
+    service_id: group.service_id || serviceId,
+    name: group.name || "",
+    description: group.description || null,
+    status: group.status || "active",
+    sort_order: group.sort_order || groupIndex + 1,
+    items: (group.items || group.task_items || []).map((item, itemIndex) => ({
+      id: item.id || null,
+      task_group_id: item.task_group_id || group.id || null,
+      title: item.title || "",
+      description: item.description || null,
+      sort_order: item.sort_order || itemIndex + 1,
+      status: item.status || "active",
+    })),
+  }));
+};
+
+const normalizeIncludedItems = (items = [], serviceId = null) => {
+  if (!Array.isArray(items) || items.length === 0) {
+    return [createEmptyIncludedItem()];
+  }
+
+  return items.map((item, index) => ({
+    id: item.id || null,
+    service_id: item.service_id || serviceId,
+    name: item.name || "",
+    description: item.description || "",
+    image: null,
+    preview: null,
+    image_preview: item.image_url || item.url || null,
+    image_url: item.image_url || item.url || null,
+    status: item.status || "active",
+    sort_order: item.sort_order || index + 1,
+  }));
+};
+
+const getPackageIncludedItemIds = (pkg) => {
+  const items =
+    pkg.included_items ||
+    pkg.package_included_items ||
+    pkg.packageIncludedItems ||
+    [];
+
+  return items.map((item) => item.included_item_id || item.id).filter(Boolean);
+};
+
+const getPackageTaskGroupIds = (pkg) => {
+  const groups =
+    pkg.task_groups || pkg.package_task_groups || pkg.packageTaskGroups || [];
+
+  return groups.map((group) => group.task_group_id || group.id).filter(Boolean);
+};
+
+const normalizePackages = (
+  packages = [],
+  includedItems = [],
+  taskGroups = []
+) => {
+  if (!Array.isArray(packages) || packages.length === 0) {
+    return [createEmptyPackage()];
+  }
+
+  return packages.map((pkg, packageIndex) => {
+    const includedItemIds = getPackageIncludedItemIds(pkg);
+    const taskGroupIds = getPackageTaskGroupIds(pkg);
+
+    const includedItemIndices = includedItemIds
+      .map((includedItemId) =>
+        includedItems.findIndex(
+          (item) => Number(item.id) === Number(includedItemId)
+        )
+      )
+      .filter((index) => index !== -1);
+
+    const taskGroupIndices = taskGroupIds
+      .map((taskGroupId) =>
+        taskGroups.findIndex(
+          (group) => Number(group.id) === Number(taskGroupId)
+        )
+      )
+      .filter((index) => index !== -1);
+
+    return {
+      id: pkg.id || null,
+      title: pkg.title || "",
+      description: pkg.description || "",
+      price: pkg.price || "",
+      billing_type: pkg.billing_type || "one_time",
+      min_area_m2: pkg.min_area_m2 || "",
+      max_area_m2: pkg.max_area_m2 || "",
+      floor_number: pkg.floor_number || "",
+      bedrooms: pkg.bedrooms || "",
+      duration_hours: pkg.duration_hours || "",
+      workers_count: pkg.workers_count || "",
+      status: pkg.status || "active",
+      sort_order: pkg.sort_order || packageIndex + 1,
+      included_item_indices: includedItemIndices,
+      task_group_indices: taskGroupIndices,
+    };
+  });
 };
 
 export default function EditServicePage() {
-  const router = useRouter();
   const { id } = useParams();
-  const { user: authUser } = useAuthGuard();
+  const router = useRouter();
 
+  const { user: authUser } = useAuthGuard();
   const isAdmin = authUser?.role === "admin";
-  const isInitialLoad = useRef(true);
 
   const {
     updateService,
+    fetchOneService,
     owners = [],
     fetchOwners,
-    fetchOneService,
     deleteServiceImage,
   } = useServiceStoreCompany();
+
   const {
     activeTypes = [],
     categories = [],
-    fetchActiveTypes,
     fetchActiveCategories,
+    fetchActiveTypes,
   } = useTypeStoreCompany();
 
-  const [pageLoading, setPageLoading] = useState(true);
+  const [loading, setLoading] = useState(true);
   const [submitLoading, setSubmitLoading] = useState(false);
-  const [formData, setFormData] = useState(INITIAL_FORM);
+  const [currentStep, setCurrentStep] = useState(1);
+
   const [existingImages, setExistingImages] = useState([]);
   const [newImageFiles, setNewImageFiles] = useState([]);
-  const [newImagePreviews, setNewImagePreviews] = useState([]);
+  const [newPreviews, setNewPreviews] = useState([]);
 
-  // ── Load page data ──────────────────────────
+  const [formData, setFormData] = useState(buildInitialFormData);
+
+  const redirectPath = useMemo(() => {
+    return isAdmin ? "/admin/services" : "/owner/services";
+  }, [isAdmin]);
 
   useEffect(() => {
-    if (!id || !authUser) return;
+    const initEdit = async () => {
+      if (!id) return;
 
-    const initPage = async () => {
-      setPageLoading(true);
+      setLoading(true);
+
       try {
-        const fetchDeps = [fetchActiveCategories()];
-        if (isAdmin) fetchDeps.push(fetchOwners());
-        await Promise.all(fetchDeps);
+        await fetchActiveCategories();
 
-        const service = await fetchOneService(id);
-        if (!service) return;
-
-        if (service.category?.id) {
-          await fetchActiveTypes(service.category.id);
+        if (isAdmin) {
+          await fetchOwners();
         }
 
+        const res = await fetchOneService(id);
+        const service = getServiceData(res);
+
+        if (!service?.id) {
+          toast.error("Service not found.");
+          return;
+        }
+
+        const categoryId = service.category_id || service.category?.id || "";
+
+        if (categoryId) {
+          await fetchActiveTypes(categoryId);
+        }
+
+        const normalizedTaskGroups = normalizeTaskGroups(
+          service.task_groups || service.taskGroups || [],
+          service.id
+        );
+
+        const normalizedIncludedItems = normalizeIncludedItems(
+          service.included_items || service.includedItems || [],
+          service.id
+        );
+
+        const normalizedPackages = normalizePackages(
+          service.packages || service.service_packages || [],
+          normalizedIncludedItems,
+          normalizedTaskGroups
+        );
+
+        const firstPackageWithId =
+          normalizedPackages.find((pkg) => pkg.id) || normalizedPackages[0];
+
         setFormData({
+          id: service.id,
+          service_id: service.id,
+
+          package_id: firstPackageWithId?.id || null,
+          selected_package: firstPackageWithId || null,
+
+          owner_id: service.owner_id?.toString() || "",
+          category_id: categoryId?.toString() || "",
+          type_id: (service.type_id || service.type?.id || "").toString(),
           title: service.title || "",
           description: service.description || "",
-          category_id: service.category?.id?.toString() || "",
-          type_id: service.type?.id?.toString() || "",
-          base_price: service.base_price || "",
-          duration: service.duration || "",
-          owner_id: service.owner_id?.toString() || "",
+          status: service.status || "active",
+
+          task_groups: normalizedTaskGroups,
+          included_items: normalizedIncludedItems,
+          packages: normalizedPackages,
         });
 
-        setExistingImages(service.images || []);
-      } catch {
-        toast.error("Could not load service data.");
+        setExistingImages(normalizeExistingImages(service.images || []));
+      } catch (error) {
+        console.error("Fetch service error:", error);
+        toast.error("Failed to load service data.");
       } finally {
-        setPageLoading(false);
-        setTimeout(() => {
-          isInitialLoad.current = false;
-        }, 100);
+        setLoading(false);
       }
     };
 
-    initPage();
-  }, [id, authUser]); // eslint-disable-line react-hooks/exhaustive-deps
-
-  // ── Re-fetch types when category changes ───
+    initEdit();
+  }, [
+    id,
+    isAdmin,
+    fetchOneService,
+    fetchOwners,
+    fetchActiveCategories,
+    fetchActiveTypes,
+  ]);
 
   useEffect(() => {
-    if (!isInitialLoad.current && formData.category_id) {
+    if (formData.category_id) {
       fetchActiveTypes(formData.category_id);
     }
-  }, [formData.category_id]); // eslint-disable-line react-hooks/exhaustive-deps
+  }, [formData.category_id, fetchActiveTypes]);
 
-  // ── Cleanup blob URLs on unmount ────────────
-
-  useEffect(() => {
-    return () => newImagePreviews.forEach(URL.revokeObjectURL);
-  }, [newImagePreviews]);
-
-  // ── Input handlers ──────────────────────────
-
-  const handleChange = (e) => {
-    const { name, value } = e.target;
-    setFormData((prev) => ({
-      ...prev,
-      [name]: value,
-      // Reset type when category changes manually
-      ...(name === "category_id" && !isInitialLoad.current
-        ? { type_id: "" }
-        : {}),
-    }));
+  const handleNextStep = () => {
+    setCurrentStep((prev) => Math.min(prev + 1, 5));
   };
 
-  const handleAddImages = (e) => {
-    const files = Array.from(e.target.files || []);
-    if (!files.length) return;
-    setNewImageFiles((prev) => [...prev, ...files]);
-    setNewImagePreviews((prev) => [...prev, ...files.map(URL.createObjectURL)]);
+  const buildCategoryTypeFormData = () => {
+    const data = new FormData();
+
+    data.append("_method", "PUT");
+    data.append("category_id", formData.category_id || "");
+    data.append("type_id", formData.type_id || "");
+
+    return data;
   };
 
-  const removeExistingImage = async (img) => {
-    try {
-      await deleteServiceImage(id, img.path);
+  const handleSubmit = async (event) => {
+    if (event) event.preventDefault();
 
-      setExistingImages((prev) =>
-        prev.filter((image) => image.path !== img.path)
-      );
-
-      toast.success("Image deleted successfully");
-    } catch (error) {
-      toast.error("Failed to delete image");
+    if (!formData.category_id) {
+      toast.error("Please select category");
+      return;
     }
-  };
 
-  const removeNewImage = (index) => {
-    URL.revokeObjectURL(newImagePreviews[index]);
-    setNewImageFiles((prev) => prev.filter((_, i) => i !== index));
-    setNewImagePreviews((prev) => prev.filter((_, i) => i !== index));
-  };
+    if (!formData.type_id) {
+      toast.error("Please select type");
+      return;
+    }
 
-  // ── Form submit ─────────────────────────────
-
-  const handleSubmit = async (e) => {
-    e.preventDefault();
     setSubmitLoading(true);
 
     try {
-      const payload = new FormData();
+      const data = buildCategoryTypeFormData();
 
-      Object.entries({
-        title: formData.title,
-        description: formData.description,
-        category_id: formData.category_id,
-        type_id: formData.type_id,
-        base_price: formData.base_price,
-        duration: formData.duration,
-        _method: "PUT",
-      }).forEach(([key, value]) => payload.append(key, value));
+      const res = await updateService(id, data);
 
-      if (formData.owner_id) payload.append("owner_id", formData.owner_id);
-      newImageFiles.forEach((file) => payload.append("images[]", file));
-      payload.append(
-        "existing_images",
-        JSON.stringify(existingImages.map((img) => img.id))
-      );
-
-      const response = await updateService(id, payload);
-
-      if (response.success) {
-        toast.success("Service updated successfully!");
-        router.push(isAdmin ? "/admin/services" : "/owner/services");
+      if (res?.success || res?.data || res?.id) {
+        toast.success("Category and type updated successfully!");
+        router.push(redirectPath);
+        return;
       }
+
+      toast.error(res?.message || "Failed to update category/type.");
     } catch (error) {
-      toast.error(error.message || "Update failed. Please try again.");
+      console.error("Update category/type error:", error);
+
+      toast.error(
+        error?.response?.data?.message ||
+          error?.message ||
+          "Failed to update category/type."
+      );
     } finally {
       setSubmitLoading(false);
     }
   };
 
-  // ── Render ──────────────────────────────────
-
-  if (pageLoading) {
+  if (loading) {
     return (
-      <ContentLoader title="Loading Service" subtitle="Fetching details…" />
+      <ContentLoader
+        title="Loading Service"
+        subtitle="Preparing service edit data..."
+      />
     );
   }
 
   return (
-    <div className="min-h-screen bg-slate-50 p-6 lg:p-10 pb-32">
-      <div className="max-w-5xl mx-auto">
-        {/* Page Header */}
-        <div className="flex items-center gap-4 mb-8">
-          <button
-            type="button"
-            onClick={() => router.back()}
-            className="w-10 h-10 flex items-center justify-center rounded-xl border border-slate-200 bg-white
-              hover:bg-slate-50 shadow-sm transition-all group"
-          >
-            <ArrowLeft
-              size={17}
-              className="text-slate-500 group-hover:-translate-x-0.5 transition-transform"
-            />
-          </button>
-          <div>
-            <h1 className="text-xl font-bold text-slate-900">Edit Service</h1>
-            <p className="text-sm text-slate-400 mt-0.5">
-              Update details, pricing, and images
-            </p>
-          </div>
+    <div className="min-h-screen bg-[#F8FAFC] pb-40">
+      <main className="max-w-7xl mx-auto px-6 pt-10">
+        <div className="mb-10">
+          <StepIndicator
+            currentStep={currentStep}
+            setCurrentStep={setCurrentStep}
+            categoryId={formData.category_id}
+            typeId={formData.type_id}
+          />
         </div>
 
-        {/* Form Grid */}
-        <form
+        <div className="min-h-[60vh]">
+          {currentStep === 1 && (
+            <Step1Classification
+              formData={formData}
+              setFormData={setFormData}
+              categories={categories}
+              activeTypes={activeTypes}
+            />
+          )}
+
+          {currentStep === 2 && (
+            <Step2Identity
+              id={id}
+              formData={formData}
+              setFormData={setFormData}
+              authUser={authUser}
+              owners={owners}
+              existingImages={existingImages}
+              setExistingImages={setExistingImages}
+              newPreviews={newPreviews}
+              setNewPreviews={setNewPreviews}
+              setNewImageFiles={setNewImageFiles}
+              deleteServiceImage={deleteServiceImage}
+            />
+          )}
+
+          {currentStep === 3 && (
+            <Step3Checklist formData={formData} setFormData={setFormData} />
+          )}
+
+          {currentStep === 4 && (
+            <Step4Inventory formData={formData} setFormData={setFormData} />
+          )}
+
+          {currentStep === 5 && (
+            <Step5Pricing formData={formData} setFormData={setFormData} />
+          )}
+        </div>
+
+        <NavigationFooter
+          currentStep={currentStep}
+          setCurrentStep={setCurrentStep}
+          typeId={formData.type_id}
+          onNext={handleNextStep}
           onSubmit={handleSubmit}
-          className="grid grid-cols-1 lg:grid-cols-3 gap-6"
-        >
-          {/* ── Left: Main Details (2/3 width) ── */}
-          <div className="lg:col-span-2 space-y-6">
-            <SectionCard icon={<FileText size={17} />} title="Service Details">
-              <div className="space-y-5">
-                {/* Admin: Owner selector */}
-                {isAdmin && (
-                  <div>
-                    <FieldLabel>Business Owner</FieldLabel>
-                    <SelectInput
-                      name="owner_id"
-                      value={formData.owner_id}
-                      onChange={handleChange}
-                      required
-                    >
-                      <option value="">Select owner…</option>
-                      {owners.map((o) => (
-                        <option key={o.id} value={o.id}>
-                          {o.business_name}
-                        </option>
-                      ))}
-                    </SelectInput>
-                  </div>
-                )}
-
-                {/* Title */}
-                <div>
-                  <FieldLabel>Title</FieldLabel>
-                  <TextInput
-                    name="title"
-                    value={formData.title}
-                    onChange={handleChange}
-                    required
-                  />
-                </div>
-
-                {/* Category + Type */}
-                <div className="grid grid-cols-2 gap-4">
-                  <div>
-                    <FieldLabel>Category</FieldLabel>
-                    <SelectInput
-                      name="category_id"
-                      value={formData.category_id}
-                      onChange={handleChange}
-                      required
-                    >
-                      <option value="">Select category…</option>
-                      {categories.map((cat) => (
-                        <option key={cat.id} value={cat.id}>
-                          {cat.name}
-                        </option>
-                      ))}
-                    </SelectInput>
-                  </div>
-                  <div>
-                    <FieldLabel>Type</FieldLabel>
-                    <SelectInput
-                      name="type_id"
-                      value={formData.type_id}
-                      onChange={handleChange}
-                      required
-                    >
-                      <option value="">Select type…</option>
-                      {activeTypes.map((t) => (
-                        <option key={t.id} value={t.id}>
-                          {t.name}
-                        </option>
-                      ))}
-                    </SelectInput>
-                  </div>
-                </div>
-
-                {/* Description */}
-                <div>
-                  <FieldLabel>Description</FieldLabel>
-                  <textarea
-                    name="description"
-                    rows={5}
-                    required
-                    value={formData.description}
-                    onChange={handleChange}
-                    className="w-full px-4 py-3 rounded-xl bg-slate-50 border border-slate-200 text-slate-800
-                      focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent
-                      transition-all resize-none"
-                  />
-                </div>
-              </div>
-            </SectionCard>
-          </div>
-
-          {/* ── Right: Pricing, Gallery, Submit (1/3 width) ── */}
-          <div className="space-y-6">
-            {/* Pricing & Duration */}
-            <SectionCard
-              icon={<DollarSign size={17} />}
-              title="Pricing & Duration"
-            >
-              <div className="space-y-4">
-                <div>
-                  <FieldLabel>Base Price</FieldLabel>
-                  <div className="relative">
-                    <DollarSign
-                      size={15}
-                      className="absolute left-3.5 top-1/2 -translate-y-1/2 text-slate-400"
-                    />
-                    <TextInput
-                      name="base_price"
-                      type="number"
-                      value={formData.base_price}
-                      onChange={handleChange}
-                      required
-                      placeholder="0.00"
-                      className="pl-9"
-                    />
-                  </div>
-                </div>
-                <div>
-                  <FieldLabel>Duration</FieldLabel>
-                  <div className="relative">
-                    <Clock
-                      size={15}
-                      className="absolute left-3.5 top-1/2 -translate-y-1/2 text-slate-400"
-                    />
-                    <TextInput
-                      name="duration"
-                      type="number"
-                      value={formData.duration}
-                      onChange={handleChange}
-                      required
-                      placeholder="Minutes"
-                      className="pl-9"
-                    />
-                  </div>
-                </div>
-              </div>
-            </SectionCard>
-
-            {/* Gallery */}
-            <SectionCard icon={<ImageIcon size={17} />} title="Gallery">
-              <div className="grid grid-cols-2 gap-3">
-                {/* Existing images */}
-                {existingImages.map((img, index) => (
-                  <ImageThumbnail
-                    key={`existing-${index + 1}`}
-                    src={img.url}
-                    onRemove={() => removeExistingImage(img)}
-                    isNew={false}
-                  />
-                ))}
-
-                {/* New image previews */}
-                {newImagePreviews.map((src, i) => (
-                  <ImageThumbnail
-                    key={`new-${i + 1}`}
-                    src={src}
-                    onRemove={() => removeNewImage(i)}
-                    isNew
-                  />
-                ))}
-
-                {/* Upload trigger */}
-                <label
-                  className="aspect-square rounded-xl border-2 border-dashed border-slate-200
-                  hover:border-blue-400 hover:bg-blue-50/30 flex flex-col items-center justify-center
-                  gap-1.5 cursor-pointer transition-all"
-                >
-                  <Upload size={16} className="text-slate-400" />
-                  <span className="text-[10px] font-semibold uppercase tracking-widest text-slate-400">
-                    Add
-                  </span>
-                  <input
-                    type="file"
-                    multiple
-                    accept="image/*"
-                    className="hidden"
-                    onChange={handleAddImages}
-                  />
-                </label>
-              </div>
-            </SectionCard>
-
-            {/* Submit */}
-            <button
-              type="submit"
-              disabled={submitLoading}
-              className="w-full h-12 bg-slate-900 hover:bg-blue-600 text-white rounded-xl font-semibold
-                flex items-center justify-center gap-2.5 transition-colors shadow-sm
-                disabled:opacity-60 disabled:cursor-not-allowed active:scale-[0.98]"
-            >
-              {submitLoading ? (
-                <Loader2 size={18} className="animate-spin" />
-              ) : (
-                <>
-                  <Save size={16} />
-                  Save Changes
-                </>
-              )}
-            </button>
-          </div>
-        </form>
-      </div>
+          totalSteps={5}
+          isLoading={submitLoading}
+        />
+      </main>
     </div>
   );
 }

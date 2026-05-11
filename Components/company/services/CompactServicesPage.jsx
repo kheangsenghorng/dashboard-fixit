@@ -12,9 +12,9 @@ import {
   ShieldAlert,
   ImageIcon,
   CheckCircle2,
-  Clock,
   Briefcase,
   PauseCircle,
+  Eye,
 } from "lucide-react";
 import { useRouter } from "next/navigation";
 import { toast } from "react-toastify";
@@ -172,7 +172,7 @@ export default function CompactServicesPage() {
         </button>
       </div>
 
-      {/* STATS */}
+      {/* STATS SUMMARY */}
       <div className="max-w-7xl mx-auto grid grid-cols-1 md:grid-cols-3 gap-4">
         {[
           {
@@ -194,7 +194,8 @@ export default function CompactServicesPage() {
           {
             label: "Paused/Draft",
             value:
-              serviceStats?.total_services - serviceStats?.active_services || 0,
+              (serviceStats?.total_services || 0) -
+              (serviceStats?.active_services || 0),
             icon: ShieldAlert,
             color: "text-amber-600",
             bg: "bg-amber-50",
@@ -207,7 +208,7 @@ export default function CompactServicesPage() {
             className={`flex items-center gap-4 bg-white p-4 rounded-2xl border transition-all ${
               filters.status === stat.id
                 ? "border-indigo-500 ring-2 ring-indigo-50 shadow-md"
-                : "border-slate-100 shadow-sm"
+                : "border-slate-100 shadow-sm hover:border-indigo-100"
             }`}
           >
             <div
@@ -225,16 +226,16 @@ export default function CompactServicesPage() {
         ))}
       </div>
 
-      {/* FILTER BAR */}
+      {/* FILTERS */}
       <div className="max-w-7xl mx-auto grid grid-cols-1 xl:grid-cols-5 gap-3">
         <div className="xl:col-span-2 relative group">
           <Search
-            className="absolute left-5 top-1/2 -translate-y-1/2 text-slate-400 group-focus-within:text-indigo-600"
+            className="absolute left-5 top-1/2 -translate-y-1/2 text-slate-300 group-focus-within:text-indigo-600 transition-colors"
             size={18}
           />
           <input
             type="text"
-            placeholder="Search services..."
+            placeholder="Search catalog by service title..."
             value={filters.search}
             onChange={(e) => handleFilterChange("search", e.target.value)}
             className="w-full pl-12 pr-10 py-4 bg-white border border-slate-200 rounded-2xl text-xs font-bold focus:ring-4 focus:ring-indigo-500/5 focus:border-indigo-500 outline-none transition-all"
@@ -257,11 +258,11 @@ export default function CompactServicesPage() {
         </div>
         <div className="relative">
           <select
-            defaultValue="all"
+            value={filters.category_id}
             onChange={(e) => handleFilterChange("category_id", e.target.value)}
             className="appearance-none w-full px-5 py-4 bg-white border border-slate-200 rounded-2xl text-xs font-bold outline-none cursor-pointer"
           >
-            <option value="all">CATEGORY: ALL</option>
+            <option value="">CATEGORY: ALL</option>
             {dropDownData.categories.map((c) => (
               <option key={c.id} value={c.id}>
                 {c.name.toUpperCase()}
@@ -275,10 +276,10 @@ export default function CompactServicesPage() {
         </div>
       </div>
 
-      {/* TABLE */}
+      {/* DATA TABLE */}
       <div className="max-w-7xl mx-auto">
         <div
-          className={`bg-white border border-slate-200 rounded-[2rem] overflow-hidden shadow-sm transition-opacity ${
+          className={`bg-white border border-slate-200 rounded-[2.5rem] overflow-hidden shadow-sm transition-opacity ${
             isLoading ? "opacity-50" : "opacity-100"
           }`}
         >
@@ -286,7 +287,7 @@ export default function CompactServicesPage() {
             <table className="w-full text-left border-collapse">
               <thead>
                 <tr className="bg-slate-50/50 border-b border-slate-100">
-                  <th className="px-4 py-4 w-10 text-center">
+                  <th className="px-6 py-5 w-10 text-center">
                     <input
                       type="checkbox"
                       className="w-4 h-4 rounded border-slate-300 text-indigo-600 cursor-pointer"
@@ -294,20 +295,17 @@ export default function CompactServicesPage() {
                       onChange={toggleSelectAll}
                     />
                   </th>
-                  <th className="px-4 py-4 text-[9px] font-black uppercase text-slate-400 tracking-widest">
+                  <th className="px-4 py-5 text-[9px] font-black uppercase text-slate-400 tracking-widest">
                     Service Profile
                   </th>
-                  <th className="px-4 py-4 text-[9px] font-black uppercase text-slate-400 tracking-widest">
-                    Category & Type Status
+                  <th className="px-4 py-5 text-[9px] font-black uppercase text-slate-400 tracking-widest">
+                    Category & Type
                   </th>
-                  <th className="px-4 py-4 text-[9px] font-black uppercase text-slate-400 tracking-widest">
-                    Price & Time
+                  <th className="px-4 py-5 text-[9px] font-black uppercase text-slate-400 tracking-widest text-center">
+                    Registry Status
                   </th>
-                  <th className="px-4 py-4 text-[9px] font-black uppercase text-slate-400 tracking-widest text-center">
-                    Service Status
-                  </th>
-                  <th className="px-4 py-4 text-right text-[9px] font-black uppercase text-slate-400 tracking-widest">
-                    Control
+                  <th className="px-6 py-5 text-right text-[9px] font-black uppercase text-slate-400 tracking-widest">
+                    Controls
                   </th>
                 </tr>
               </thead>
@@ -315,13 +313,13 @@ export default function CompactServicesPage() {
                 {services.map((item) => (
                   <tr
                     key={item.id}
-                    className={`group transition-colors ${
+                    className={`group transition-all ${
                       selectedSet.has(item.id)
                         ? "bg-indigo-50/40"
                         : "hover:bg-slate-50/50"
                     }`}
                   >
-                    <td className="px-4 py-3 text-center">
+                    <td className="px-6 py-4 text-center">
                       <input
                         type="checkbox"
                         className="w-4 h-4 rounded border-slate-300 text-indigo-600 cursor-pointer"
@@ -329,9 +327,9 @@ export default function CompactServicesPage() {
                         onChange={() => toggleSelectOne(item.id)}
                       />
                     </td>
-                    <td className="px-4 py-3">
+                    <td className="px-4 py-4">
                       <div className="flex items-center gap-3">
-                        <div className="relative w-11 h-11 rounded-xl overflow-hidden bg-slate-50 border border-slate-100 shadow-sm">
+                        <div className="relative w-12 h-12 rounded-2xl overflow-hidden bg-slate-50 border border-slate-100 shadow-sm">
                           {item.images?.[0]?.url ? (
                             <Image
                               src={item.images[0].url}
@@ -343,74 +341,77 @@ export default function CompactServicesPage() {
                           ) : (
                             <ImageIcon
                               className="m-auto text-slate-200"
-                              size={16}
+                              size={18}
                             />
                           )}
                         </div>
                         <div>
-                          <p className="font-bold text-slate-900 text-xs mb-0.5">
+                          <p className="font-black text-slate-900 text-[13px] leading-tight mb-0.5">
                             {item.title}
                           </p>
-                          <span className="text-[9px] text-slate-400 font-bold uppercase">
+                          <span className="text-[9px] text-slate-400 font-bold uppercase tracking-wider">
                             {item.owner?.business_name}
                           </span>
                         </div>
                       </div>
                     </td>
-                    <td className="px-4 py-3">
-                      <div className="flex flex-col gap-2">
-                        {/* CATEGORY & STATUS */}
+                    <td className="px-4 py-4">
+                      <div className="flex flex-col gap-1.5">
                         <div className="flex items-center gap-2">
                           <img
                             src={item.category?.icon}
-                            className="w-3.5 h-3.5 object-contain"
+                            className="w-4 h-4 object-contain"
                             alt=""
                           />
-                          <span className="text-[10px] font-bold text-slate-600 uppercase truncate max-w-[80px]">
+                          <span className="text-[10px] font-black text-slate-700 uppercase tracking-tight">
                             {item.category?.name}
                           </span>
-                          <StatusBadge mini status={item.category?.status} />
                         </div>
-                        {/* TYPE & STATUS */}
                         <div className="flex items-center gap-2">
-                          <span className="text-[9px] font-black text-indigo-500 border-l-2 border-indigo-100 pl-2 uppercase tracking-widest">
+                          <div className="w-1.5 h-1.5 rounded-full bg-indigo-400" />
+                          <span className="text-[9px] font-bold text-slate-400 uppercase tracking-widest">
                             {item.type?.name}
                           </span>
-                          <StatusBadge mini status={item.type?.status} />
                         </div>
                       </div>
                     </td>
-                    <td className="px-4 py-3">
-                      <div className="flex flex-col">
-                        <span className="text-xs font-black text-slate-900">
-                          ${parseFloat(item.base_price).toFixed(2)}
-                        </span>
-                        <span className="text-[9px] text-slate-400 font-bold flex items-center gap-1 uppercase tracking-tighter">
-                          <Clock size={10} /> {item.duration}m
-                        </span>
-                      </div>
-                    </td>
-                    <td className="px-4 py-3 text-center">
+                    <td className="px-4 py-4 text-center">
                       <StatusBadge status={item.status} />
                     </td>
-                    <td className="px-4 py-3 text-right">
-                      <div className="flex justify-end gap-1 opacity-0 group-hover:opacity-100 transition-all">
+                    <td className="px-6 py-4 text-right">
+                      <div className="flex justify-end gap-1.5 opacity-0 group-hover:opacity-100 transition-all">
+                        {/* VIEW ACTION */}
+                        <button
+                          onClick={() =>
+                            router.push(`/owner/services/${item.id}`)
+                          }
+                          className="p-2 text-slate-400 hover:text-emerald-600 hover:bg-emerald-50 rounded-xl border border-transparent hover:border-emerald-100 shadow-sm transition-all"
+                          title="View Details"
+                        >
+                          <Eye size={16} />
+                        </button>
+
+                        {/* EDIT ACTION */}
                         <button
                           onClick={() =>
                             router.push(`/owner/edit/services/${item.id}`)
                           }
-                          className="p-1.5 text-slate-400 hover:text-indigo-600 hover:bg-white rounded-lg border border-transparent hover:border-slate-100 shadow-sm"
+                          className="p-2 text-slate-400 hover:text-indigo-600 hover:bg-indigo-50 rounded-xl border border-transparent hover:border-indigo-100 shadow-sm transition-all"
+                          title="Edit Service"
                         >
-                          <Pencil size={14} />
+                          <Pencil size={16} />
                         </button>
+
+                        {/* DELETE ACTION */}
                         <button
                           onClick={() => {
                             setIdsToDelete([item.id]);
                             setDeleteOpen(true);
                           }}
-                          className="p-1.5 text-slate-400 hover:text-red-600 hover:bg-white rounded-lg border border-transparent hover:border-slate-100 shadow-sm"
+                          className="p-2 text-slate-400 hover:text-rose-600 hover:bg-rose-50 rounded-xl border border-transparent hover:border-rose-100 shadow-sm transition-all"
+                          title="Remove Service"
                         >
-                          <Trash2 size={14} />
+                          <Trash2 size={16} />
                         </button>
                       </div>
                     </td>
@@ -420,29 +421,31 @@ export default function CompactServicesPage() {
             </table>
           </div>
 
-          {/* FOOTER */}
-          <div className="px-6 py-4 bg-slate-50/50 border-t border-slate-100 flex items-center justify-between text-[10px] font-black text-slate-400 uppercase tracking-widest leading-none">
-            <span className="text-slate-900 tracking-normal text-[11px] font-black">
-              Showing <span className="text-indigo-600">{services.length}</span>{" "}
-              of {meta?.total || 0} Records
+          {/* PAGINATION FOOTER */}
+          <div className="px-8 py-5 bg-slate-50/50 border-t border-slate-100 flex items-center justify-between">
+            <span className="text-slate-500 text-[11px] font-black uppercase tracking-widest">
+              Total Records:{" "}
+              <span className="text-indigo-600">{meta?.total || 0}</span>
             </span>
-            <div className="flex gap-2">
+            <div className="flex items-center gap-3">
               <button
                 disabled={meta?.current_page === 1}
                 onClick={() => refreshData({ page: meta.current_page - 1 })}
-                className="p-2 bg-white border border-slate-200 rounded-xl hover:bg-slate-50 disabled:opacity-30"
+                className="p-2.5 bg-white border border-slate-200 rounded-xl hover:bg-indigo-50 hover:text-indigo-600 disabled:opacity-30 transition-all shadow-sm"
               >
-                <ChevronLeft size={16} />
+                <ChevronLeft size={18} />
               </button>
-              <div className="flex items-center px-4 h-9 bg-white border border-slate-200 rounded-xl text-slate-900 font-black">
-                {meta?.current_page || 1} / {meta?.last_page || 1}
+              <div className="flex items-center px-5 h-10 bg-white border border-slate-200 rounded-xl text-slate-900 font-black text-xs shadow-sm">
+                {meta?.current_page || 1}{" "}
+                <span className="mx-2 text-slate-300">/</span>{" "}
+                {meta?.last_page || 1}
               </div>
               <button
                 disabled={meta?.current_page === meta?.last_page}
                 onClick={() => refreshData({ page: meta.current_page + 1 })}
-                className="p-2 bg-white border border-slate-200 rounded-xl hover:bg-slate-50 disabled:opacity-30"
+                className="p-2.5 bg-white border border-slate-200 rounded-xl hover:bg-indigo-50 hover:text-indigo-600 disabled:opacity-30 transition-all shadow-sm"
               >
-                <ChevronRight size={16} />
+                <ChevronRight size={18} />
               </button>
             </div>
           </div>
@@ -452,47 +455,56 @@ export default function CompactServicesPage() {
         <AnimatePresence>
           {selectedIds.length > 0 && (
             <motion.div
-              initial={{ y: 20, x: "-50%", opacity: 0 }}
+              initial={{ y: 50, x: "-50%", opacity: 0 }}
               animate={{ y: 0, x: "-50%", opacity: 1 }}
-              exit={{ y: 20, x: "-50%", opacity: 0 }}
-              className="fixed bottom-6 left-1/2 z-50 px-6 py-3 bg-slate-900 text-white rounded-full shadow-2xl flex items-center gap-6 border border-slate-700 backdrop-blur-md"
+              exit={{ y: 50, x: "-50%", opacity: 0 }}
+              className="fixed bottom-8 left-1/2 z-50 px-8 py-4 bg-slate-900 text-white rounded-3xl shadow-2xl flex items-center gap-8 border border-slate-700/50 backdrop-blur-xl"
             >
-              <span className="bg-indigo-600 px-2.5 py-1 rounded-lg text-[9px] font-black uppercase">
-                {selectedIds.length} SELECTED
-              </span>
-              <div className="flex gap-6 border-l border-slate-700 pl-6">
+              <div className="flex items-center gap-3 pr-8 border-r border-slate-700">
+                <span className="w-6 h-6 bg-indigo-600 rounded-full flex items-center justify-center text-[10px] font-black">
+                  {selectedIds.length}
+                </span>
+                <span className="text-[10px] font-black uppercase tracking-[0.2em]">
+                  Items Selected
+                </span>
+              </div>
+
+              <div className="flex gap-8">
                 <button
                   onClick={() => handleBulkStatusUpdate("active")}
-                  className="text-[9px] font-black uppercase hover:text-emerald-400 flex items-center gap-2 transition-colors"
+                  className="text-[10px] font-black uppercase tracking-widest hover:text-emerald-400 flex items-center gap-2 transition-colors"
                 >
-                  <CheckCircle2 size={14} /> ACTIVATE
+                  <CheckCircle2 size={16} /> ACTIVATE
                 </button>
                 <button
                   onClick={() => handleBulkStatusUpdate("paused")}
-                  className="text-[9px] font-black uppercase hover:text-amber-400 flex items-center gap-2 transition-colors"
+                  className="text-[10px] font-black uppercase tracking-widest hover:text-amber-400 flex items-center gap-2 transition-colors"
                 >
-                  <PauseCircle size={14} /> PAUSE
+                  <PauseCircle size={16} /> PAUSE
                 </button>
                 <button
                   onClick={() => {
                     setIdsToDelete(selectedIds);
                     setDeleteOpen(true);
                   }}
-                  className="text-[9px] font-black uppercase hover:text-rose-400 flex items-center gap-2 transition-colors"
+                  className="text-[10px] font-black uppercase tracking-widest hover:text-rose-400 flex items-center gap-2 transition-colors"
                 >
-                  <Trash2 size={14} /> DELETE
+                  <Trash2 size={16} /> DELETE
                 </button>
               </div>
-              <X
-                size={14}
-                className="text-slate-500 cursor-pointer hover:text-white"
+
+              <button
+                className="p-2 hover:bg-slate-800 rounded-full transition-colors"
                 onClick={() => setSelectedSet(new Set())}
-              />
+              >
+                <X size={16} className="text-slate-500" />
+              </button>
             </motion.div>
           )}
         </AnimatePresence>
       </div>
 
+      {/* DELETE MODAL */}
       <DeleteConfirmModal
         isOpen={deleteOpen}
         onClose={() => setDeleteOpen(false)}
@@ -530,9 +542,9 @@ function StatusBadge({ status, mini = false }) {
 
   if (mini) {
     return (
-      <div className="flex items-center gap-1">
+      <div className="flex items-center gap-1.5">
         <span className={`w-1.5 h-1.5 rounded-full ${config.dot}`} />
-        <span className="text-[7px] font-black text-slate-400 uppercase tracking-tighter">
+        <span className="text-[8px] font-black text-slate-400 uppercase tracking-tighter">
           {config.label}
         </span>
       </div>
@@ -541,7 +553,7 @@ function StatusBadge({ status, mini = false }) {
 
   return (
     <span
-      className={`inline-flex items-center gap-1.5 px-3 py-1 rounded-lg text-[9px] font-black uppercase tracking-tighter border shadow-sm transition-all ${config.styles}`}
+      className={`inline-flex items-center gap-2 px-3.5 py-1.5 rounded-xl text-[9px] font-black uppercase tracking-widest border shadow-sm transition-all ${config.styles}`}
     >
       <span className="relative flex h-1.5 w-1.5">
         {config.ping && (

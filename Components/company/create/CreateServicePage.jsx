@@ -1,40 +1,43 @@
 "use client";
 
-import React, { useState, useEffect, useMemo } from "react";
-import {
-  ArrowLeft,
-  Search,
-  CheckCircle2,
-  Sparkles,
-  Layers,
-  Plus,
-  X,
-  DollarSign,
-  Clock,
-  ImageIcon,
-  FileText,
-  Layout,
-  ChevronRight,
-  RotateCcw,
-  Zap,
-  Globe,
-  ShieldCheck,
-} from "lucide-react";
+import React, { useState, useEffect } from "react";
 import { useRouter } from "next/navigation";
 import { toast } from "react-toastify";
-import Image from "next/image";
-import { motion, AnimatePresence } from "framer-motion";
+import ContentLoader from "../../ContentLoader";
 
-// Hooks & Stores (Assuming these paths remain the same)
+// Stores
 import { useAuthGuard } from "../../../app/hooks/useAuthGuard";
 import { useServiceStoreCompany } from "../../../app/store/owner/useServiceStore";
 import { useTypeStoreCompany } from "../../../app/store/owner/useTypeStore";
-import ContentLoader from "../../ContentLoader";
+import { useTaskGroupStore } from "../../../app/store/services/useTaskGroupStore";
+import { useTaskItemStore } from "../../../app/store/services/useTaskItemStore";
+import { useIncludedItemStore } from "../../../app/store/services/useIncludedItemStore";
+import { usePackageIncludedItemStore } from "../../../app/store/services/usePackageIncludedItemStore";
+import { usePackageTaskGroupStore } from "../../../app/store/services/usePackageTaskGroupStore";
+import { useServicePackageStore } from "../../../app/store/services/useServicePackageStore";
+
+// Components
+import StepIndicator from "./service/StepIndicator";
+import Step1Classification from "./service/Step1Classification";
+import Step2Identity from "./service/Step2Identity";
+import Step3Checklist from "./service/Step3Checklist";
+import Step4Inventory from "./service/Step4Inventory";
+import Step5Pricing from "./service/Step5Pricing";
+import NavigationFooter from "./service/NavigationFooter";
 
 export default function CreateServicePage() {
   const router = useRouter();
   const { user: authUser } = useAuthGuard();
+
   const { createService, owners = [], fetchOwners } = useServiceStoreCompany();
+
+  const { create: createTaskGroup } = useTaskGroupStore();
+  const { create: createTaskItem } = useTaskItemStore();
+  const { create: createIncludedItem } = useIncludedItemStore();
+  const { create: createServicePackage } = useServicePackageStore();
+  const { create: createPackageIncludedItem } = usePackageIncludedItemStore();
+  const { create: createPackageTaskGroup } = usePackageTaskGroupStore();
+
   const {
     activeTypes = [],
     categories = [],
@@ -43,574 +46,425 @@ export default function CreateServicePage() {
   } = useTypeStoreCompany();
 
   const [loading, setLoading] = useState(false);
-  const [searchTerm, setSearchTerm] = useState("");
-  const [formData, setFormData] = useState({
-    title: "",
-    description: "",
-    category_id: "",
-    type_id: "",
-    base_price: "",
-    duration: "",
-    owner_id: "",
-  });
-
+  const [currentStep, setCurrentStep] = useState(1);
   const [imageFiles, setImageFiles] = useState([]);
   const [previews, setPreviews] = useState([]);
 
+  const [formData, setFormData] = useState({
+    id: null,
+    service_id: null,
+
+    owner_id: "",
+    category_id: "",
+    type_id: "",
+    title: "",
+    description: "",
+    status: "active",
+
+    task_groups: [
+      {
+        name: "General Area",
+        description: null,
+        status: "active",
+        items: [
+          {
+            title: "",
+            description: null,
+            sort_order: 1,
+            status: "active",
+          },
+        ],
+      },
+    ],
+
+    included_items: [
+      {
+        name: "",
+        description: "",
+        image: null,
+        image_preview: null,
+        status: "active",
+      },
+    ],
+
+    packages: [
+      {
+        title: "Standard",
+        description: "",
+        price: "",
+        billing_type: "one_time",
+        min_area_m2: "",
+        max_area_m2: "",
+        floor_number: "",
+        bedrooms: "",
+        duration_hours: "",
+        workers_count: "",
+        status: "active",
+        included_item_indices: [],
+      },
+    ],
+  });
+
   useEffect(() => {
     fetchActiveCategories();
-    if (authUser?.role === "admin") fetchOwners();
+
+    if (authUser?.role === "admin") {
+      fetchOwners();
+    }
   }, []);
 
   useEffect(() => {
-    if (formData.category_id) fetchActiveTypes(formData.category_id);
+    if (formData.category_id) {
+      fetchActiveTypes(formData.category_id);
+    }
   }, [formData.category_id]);
 
-  const filteredCategories = useMemo(
-    () =>
-      categories.filter((c) =>
-        c.name.toLowerCase().includes(searchTerm.toLowerCase())
-      ),
-    [categories, searchTerm]
-  );
-
-  const handleImageChange = (e) => {
-    const files = Array.from(e.target.files);
-    setImageFiles((prev) => [...prev, ...files]);
-    setPreviews((prev) => [
-      ...prev,
-      ...files.map((f) => URL.createObjectURL(f)),
-    ]);
+  const getCreatedService = (res) => {
+    return res?.data?.data || res?.data || res?.service || res || null;
   };
 
-  const progress = useMemo(() => {
-    let p = 0;
-    if (formData.category_id) p += 25;
-    if (formData.type_id) p += 25;
-    if (formData.title && formData.base_price) p += 25;
-    if (previews.length > 0) p += 25;
-    return p;
-  }, [formData, previews]);
+  const getCreatedRecord = (res, key = null) => {
+    if (!res) return null;
 
-  const handleSubmit = async (e) => {
-    e.preventDefault();
+    return res?.data?.data || res?.data || (key ? res?.[key] : null) || res;
+  };
+
+  const emptyToNull = (value) => {
+    return value === "" || value === undefined ? null : value;
+  };
+
+  const createBaseService = async () => {
     setLoading(true);
 
     try {
       const data = new FormData();
 
-      Object.entries(formData).forEach(([key, value]) => {
-        if (value === undefined || value === null || value === "") return;
+      data.append("owner_id", formData.owner_id || "");
+      data.append("category_id", formData.category_id || "");
+      data.append("type_id", formData.type_id || "");
+      data.append("title", formData.title || "");
+      data.append("description", formData.description || "");
+      data.append("status", formData.status || "active");
 
-        if (key === "images") return;
-
-        if (Array.isArray(value)) {
-          value.forEach((item) => {
-            data.append(`${key}[]`, item);
-          });
-          return;
-        }
-
-        data.append(key, value);
-      });
-
-      imageFiles.forEach((file) => {
-        if (file instanceof File) {
-          data.append("images[]", file);
-        }
-      });
+      imageFiles.forEach((file) => data.append("images[]", file));
 
       const res = await createService(data);
-      console.log(res);
+      const createdService = getCreatedService(res);
 
-      if (res.success) {
-        toast.success("Service live!");
-        router.push(
-          authUser?.role === "admin" ? "/admin/services" : "/owner/services"
-        );
+      if (createdService?.id) {
+        setFormData((prev) => ({
+          ...prev,
+          id: createdService.id,
+          service_id: createdService.id,
+        }));
+
+        toast.success("Service created successfully!");
+        return createdService.id;
       }
+
+      toast.error("Failed to create service");
+      return null;
     } catch (error) {
       console.error("Create service error:", error);
-
-      const errors = error?.response?.data?.errors;
-
-      if (errors) {
-        // Get first validation error message
-        const firstError = Object.values(errors)?.flat()?.[0];
-
-        toast.error(firstError || "Validation failed");
-      } else {
-        toast.error(
-          error?.response?.data?.message ||
-            error?.message ||
-            "Error creating service"
-        );
-      }
+      toast.error("Failed to create service");
+      return null;
     } finally {
       setLoading(false);
     }
   };
 
-  if (loading)
+  const handleNextStep = async () => {
+    if (currentStep === 1) {
+      setCurrentStep(2);
+      return;
+    }
+
+    if (currentStep === 2 && !formData.service_id) {
+      const serviceId = await createBaseService();
+
+      if (!serviceId) return;
+    }
+
+    setCurrentStep((prev) => Math.min(prev + 1, 5));
+  };
+
+  const autoCreateChecklist = async () => {
+    const serviceId = formData.service_id;
+
+    if (!serviceId) {
+      toast.error("Please create the service first.");
+      return [];
+    }
+
+    const createdTaskGroups = [];
+
+    for (const group of formData.task_groups || []) {
+      if (!group.name) continue;
+
+      const groupPayload = {
+        service_id: serviceId,
+        name: group.name,
+        description: group.description || null,
+        status: group.status || "active",
+      };
+
+      const groupRes = await createTaskGroup(groupPayload);
+      const savedGroup = getCreatedRecord(groupRes, "task_group");
+
+      if (!savedGroup?.id) {
+        throw new Error("Failed to create task group");
+      }
+
+      createdTaskGroups.push(savedGroup);
+
+      for (let index = 0; index < (group.items || []).length; index++) {
+        const item = group.items[index];
+
+        if (!item.title) continue;
+
+        const itemPayload = {
+          task_group_id: savedGroup.id,
+          title: item.title,
+          description: item.description || null,
+          sort_order: item.sort_order || index + 1,
+          status: item.status || "active",
+        };
+
+        const itemRes = await createTaskItem(itemPayload);
+
+        if (!itemRes) {
+          const storeError = useTaskItemStore.getState().error;
+          throw new Error(storeError || "Failed to create task item");
+        }
+      }
+    }
+
+    return createdTaskGroups;
+  };
+
+  const autoCreateIncludedItems = async () => {
+    const serviceId = formData.service_id;
+
+    if (!serviceId) {
+      toast.error("Please create the service first.");
+      return [];
+    }
+
+    const createdIncludedItems = [];
+
+    for (const item of formData.included_items || []) {
+      if (!item.name) continue;
+
+      const data = new FormData();
+
+      data.append("service_id", serviceId);
+      data.append("name", item.name);
+      data.append("description", item.description || "");
+      data.append("status", item.status || "active");
+
+      if (item.image) {
+        data.append("image", item.image);
+      }
+
+      const res = await createIncludedItem(data);
+      const savedItem = getCreatedRecord(res, "included_item");
+
+      if (!savedItem?.id) {
+        const storeError = useIncludedItemStore.getState().error;
+        throw new Error(storeError || "Failed to create included item");
+      }
+
+      createdIncludedItems.push(savedItem);
+    }
+
+    return createdIncludedItems;
+  };
+
+  const autoCreatePackages = async (
+    createdIncludedItems = [],
+    createdTaskGroups = []
+  ) => {
+    createdIncludedItems = Array.isArray(createdIncludedItems)
+      ? createdIncludedItems
+      : [];
+
+    createdTaskGroups = Array.isArray(createdTaskGroups)
+      ? createdTaskGroups
+      : [];
+
+    const serviceId = formData.service_id;
+
+    if (!serviceId) {
+      toast.error("Please create the service first.");
+      return false;
+    }
+
+    for (const pkg of formData.packages || []) {
+      if (!pkg.title) continue;
+
+      const packagePayload = {
+        service_id: serviceId,
+        title: pkg.title,
+        description: pkg.description || null,
+        price: pkg.price === "" || pkg.price === undefined ? 0 : pkg.price,
+        billing_type: pkg.billing_type || "one_time",
+        min_area_m2: emptyToNull(pkg.min_area_m2),
+        max_area_m2: emptyToNull(pkg.max_area_m2),
+        floor_number: emptyToNull(pkg.floor_number),
+        bedrooms: emptyToNull(pkg.bedrooms),
+        duration_hours: emptyToNull(pkg.duration_hours),
+        workers_count: emptyToNull(pkg.workers_count),
+        status: pkg.status || "active",
+      };
+
+      const packageRes = await createServicePackage(packagePayload);
+
+      if (!packageRes) {
+        const storeError = useServicePackageStore.getState().error;
+        throw new Error(storeError || "Failed to create service package");
+      }
+
+      const savedPackage = getCreatedRecord(packageRes, "package");
+
+      if (!savedPackage?.id) {
+        console.error("Invalid service package response:", packageRes);
+        throw new Error("Service package created but response has no id");
+      }
+
+      for (
+        let order = 0;
+        order < (pkg.included_item_indices || []).length;
+        order++
+      ) {
+        const itemIndex = pkg.included_item_indices[order];
+        const savedIncludedItem = createdIncludedItems[itemIndex];
+
+        if (!savedIncludedItem?.id) continue;
+
+        const pivotRes = await createPackageIncludedItem({
+          package_id: savedPackage.id,
+          included_item_id: savedIncludedItem.id,
+          sort_order: order + 1,
+        });
+
+        if (!pivotRes) {
+          const storeError = usePackageIncludedItemStore.getState().error;
+          throw new Error(storeError || "Failed to attach included item");
+        }
+      }
+
+      for (const savedTaskGroup of createdTaskGroups) {
+        if (!savedTaskGroup?.id) continue;
+
+        const groupPivotRes = await createPackageTaskGroup({
+          package_id: savedPackage.id,
+          task_group_id: savedTaskGroup.id,
+        });
+
+        if (!groupPivotRes) {
+          const storeError = usePackageTaskGroupStore.getState().error;
+          throw new Error(storeError || "Failed to attach task group");
+        }
+      }
+    }
+
+    return true;
+  };
+
+  const handleSubmit = async (e) => {
+    if (e) e.preventDefault();
+
+    setLoading(true);
+
+    try {
+      const createdTaskGroups = await autoCreateChecklist();
+      const createdIncludedItems = await autoCreateIncludedItems();
+
+      const packageSuccess = await autoCreatePackages(
+        createdIncludedItems,
+        createdTaskGroups
+      );
+
+      if (!packageSuccess) return;
+
+      toast.success("Service deployed successfully!");
+
+      router.push(
+        authUser?.role === "admin" ? "/admin/services" : "/owner/services"
+      );
+    } catch (error) {
+      console.error("Deploy service error:", error);
+      toast.error(error.message || "Failed to deploy service");
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  if (loading) {
     return (
       <ContentLoader
-        title="Syncing Network"
-        subtitle="Deploying your new service to the marketplace..."
+        title="Syncing Protocol"
+        subtitle="Deploying assets to cloud..."
       />
     );
+  }
 
   return (
-    <div className="min-h-screen bg-[#F8FAFC] text-slate-900 font-sans selection:bg-indigo-100 selection:text-indigo-900">
-      {/* MODERN BACKGROUND DECOR */}
-      <div className="fixed inset-0 z-0 pointer-events-none overflow-hidden">
-        <div className="absolute top-0 left-1/4 w-[500px] h-[500px] bg-indigo-200/30 rounded-full blur-[120px] mix-blend-multiply animate-pulse" />
-        <div className="absolute bottom-0 right-1/4 w-[500px] h-[500px] bg-blue-200/30 rounded-full blur-[120px] mix-blend-multiply" />
-        <div className="absolute inset-0 bg-[url('https://grainy-gradients.vercel.app/noise.svg')] opacity-20 brightness-100 contrast-150"></div>
-      </div>
-
-      <main className="relative z-10 max-w-5xl mx-auto px-6 pt-10 pb-40">
-        {/* TOP NAV BAR */}
-        <nav className="flex items-center justify-between mb-16">
-          <motion.button
-            whileHover={{ x: -4 }}
-            onClick={() => router.back()}
-            className="group flex items-center gap-3 text-slate-500 hover:text-slate-900 transition-colors"
-          >
-            <div className="w-10 h-10 rounded-full bg-white shadow-sm border border-slate-200 flex items-center justify-center group-hover:border-slate-300">
-              <ArrowLeft size={18} />
-            </div>
-            <span className="font-semibold text-sm">Back to Dashboard</span>
-          </motion.button>
-
-          <div className="flex items-center gap-6 bg-white/80 backdrop-blur-md px-6 py-2.5 rounded-full border border-slate-200 shadow-sm">
-            <div className="flex -space-x-2">
-              {[1, 2, 3, 4].map((i) => (
-                <div
-                  key={i}
-                  className={`w-2.5 h-2.5 rounded-full border-2 border-white ${
-                    progress >= i * 25 ? "bg-indigo-600" : "bg-slate-200"
-                  }`}
-                />
-              ))}
-            </div>
-            <span className="text-xs font-bold text-slate-500 uppercase tracking-tighter">
-              {progress}% Complete
-            </span>
-          </div>
-        </nav>
-
-        <header className="mb-12">
-          <motion.div
-            initial={{ opacity: 0, y: 10 }}
-            animate={{ opacity: 1, y: 0 }}
-          >
-            <span className="text-indigo-600 font-bold text-xs uppercase tracking-[0.2em] mb-3 block">
-              Marketplace Entry
-            </span>
-            <h1 className="text-6xl font-black tracking-tight text-slate-900">
-              Create{" "}
-              <span className="text-transparent bg-clip-text bg-gradient-to-r from-indigo-600 to-blue-500">
-                Service
-              </span>
-            </h1>
-          </motion.div>
-        </header>
-
-        <form id="service-form" onSubmit={handleSubmit} className="space-y-10">
-          {/* STEP 1: CATEGORY SELECTION */}
-          <section className="bg-white border border-slate-200 rounded-[2.5rem] overflow-hidden shadow-sm">
-            <div className="p-8 border-b border-slate-100 flex items-center justify-between bg-slate-50/50">
-              <div className="flex items-center gap-4">
-                <div className="w-12 h-12 bg-slate-900 text-white rounded-2xl flex items-center justify-center">
-                  <Layers size={22} />
-                </div>
-                <div>
-                  <h2 className="text-xl font-bold">Service Classification</h2>
-                  <p className="text-sm text-slate-500">
-                    Define your niche and specialization
-                  </p>
-                </div>
-              </div>
-              {formData.category_id && (
-                <button
-                  type="button"
-                  onClick={() =>
-                    setFormData((p) => ({ ...p, category_id: "", type_id: "" }))
-                  }
-                  className="text-xs font-bold text-indigo-600 hover:bg-indigo-50 px-4 py-2 rounded-xl transition-colors"
-                >
-                  Reset Selection
-                </button>
-              )}
-            </div>
-
-            <div className="p-8">
-              <AnimatePresence mode="wait">
-                {!formData.category_id ? (
-                  <motion.div
-                    key="cat-grid"
-                    initial={{ opacity: 0 }}
-                    animate={{ opacity: 1 }}
-                    exit={{ opacity: 0 }}
-                  >
-                    <div className="relative mb-8">
-                      <Search
-                        className="absolute left-5 top-1/2 -translate-y-1/2 text-slate-400"
-                        size={18}
-                      />
-                      <input
-                        placeholder="Search categories..."
-                        className="w-full bg-slate-100/50 border-transparent rounded-2xl py-4 pl-14 pr-6 font-medium focus:bg-white focus:ring-2 focus:ring-indigo-500/20 transition-all"
-                        value={searchTerm}
-                        onChange={(e) => setSearchTerm(e.target.value)}
-                      />
-                    </div>
-                    <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
-                      {filteredCategories.map((cat) => (
-                        <motion.button
-                          whileHover={{ y: -4 }}
-                          whileTap={{ scale: 0.98 }}
-                          key={cat.id}
-                          type="button"
-                          onClick={() =>
-                            setFormData((p) => ({ ...p, category_id: cat.id }))
-                          }
-                          className="group p-6 bg-white border border-slate-100 rounded-3xl hover:border-indigo-200 hover:shadow-md transition-all text-center"
-                        >
-                          <div className="w-16 h-16 mx-auto mb-4 bg-slate-50 rounded-2xl p-3 group-hover:bg-indigo-50 transition-colors">
-                            <Image
-                              src={cat.icon}
-                              width={64}
-                              height={64}
-                              className="object-contain"
-                              alt=""
-                              unoptimized
-                            />
-                          </div>
-                          <span className="text-sm font-bold text-slate-700 uppercase tracking-tight">
-                            {cat.name}
-                          </span>
-                        </motion.button>
-                      ))}
-                    </div>
-                  </motion.div>
-                ) : (
-                  <motion.div
-                    key="type-grid"
-                    initial={{ opacity: 0, x: 20 }}
-                    animate={{ opacity: 1, x: 0 }}
-                  >
-                    <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
-                      {activeTypes.map((type) => (
-                        <button
-                          key={type.id}
-                          type="button"
-                          onClick={() =>
-                            setFormData((p) => ({
-                              ...p,
-                              type_id: type.id.toString(),
-                            }))
-                          }
-                          className={`flex items-center gap-4 p-4 rounded-2xl border-2 transition-all ${
-                            formData.type_id === type.id.toString()
-                              ? "border-indigo-600 bg-indigo-50/50"
-                              : "border-slate-100 bg-white hover:border-slate-200"
-                          }`}
-                        >
-                          <div className="w-12 h-12 rounded-xl overflow-hidden bg-white border border-slate-100 shrink-0">
-                            <Image
-                              src={type.icon}
-                              width={48}
-                              height={48}
-                              className="object-cover"
-                              alt=""
-                              unoptimized
-                            />
-                          </div>
-                          <div className="text-left overflow-hidden">
-                            <p className="font-bold text-slate-900 truncate">
-                              {type.name}
-                            </p>
-                            <p className="text-[10px] uppercase font-bold text-slate-400 tracking-widest">
-                              Select
-                            </p>
-                          </div>
-                          {formData.type_id === type.id.toString() && (
-                            <CheckCircle2
-                              size={18}
-                              className="ml-auto text-indigo-600"
-                            />
-                          )}
-                        </button>
-                      ))}
-                    </div>
-                  </motion.div>
-                )}
-              </AnimatePresence>
-            </div>
-          </section>
-
-          {/* STEP 2: CONTENT & LOGISTICS */}
-          <AnimatePresence>
-            {formData.type_id && (
-              <motion.div
-                initial={{ opacity: 0, y: 20 }}
-                animate={{ opacity: 1, y: 0 }}
-                className="grid grid-cols-1 lg:grid-cols-12 gap-10"
-              >
-                {/* Details Card */}
-                <div className="lg:col-span-8 space-y-8">
-                  <section className="bg-white border border-slate-200 rounded-[2.5rem] p-8 shadow-sm space-y-8">
-                    <div className="flex items-center gap-3 mb-2">
-                      <FileText className="text-indigo-600" size={20} />
-                      <h3 className="text-lg font-bold">Service Details</h3>
-                    </div>
-
-                    {authUser?.role === "admin" && (
-                      <div className="grid grid-cols-1 gap-2">
-                        <label className="text-[10px] font-bold uppercase text-slate-400 tracking-widest px-1">
-                          Account Owner
-                        </label>
-                        <select
-                          value={formData.owner_id}
-                          onChange={(e) =>
-                            setFormData((p) => ({
-                              ...p,
-                              owner_id: e.target.value,
-                            }))
-                          }
-                          className="w-full p-4 bg-slate-50 rounded-2xl border-none font-bold outline-none cursor-pointer focus:ring-2 focus:ring-indigo-500/20"
-                        >
-                          <option value="">Select Partner Account...</option>
-                          {owners.map((o) => (
-                            <option key={o.id} value={o.id}>
-                              {o.business_name}
-                            </option>
-                          ))}
-                        </select>
-                      </div>
-                    )}
-
-                    <div className="space-y-2">
-                      <label className="text-[10px] font-bold uppercase text-slate-400 tracking-widest px-1">
-                        Service Title
-                      </label>
-                      <input
-                        value={formData.title}
-                        onChange={(e) =>
-                          setFormData((p) => ({ ...p, title: e.target.value }))
-                        }
-                        placeholder="e.g., Premium Studio Portrait Session"
-                        className="w-full text-3xl font-black outline-none placeholder:text-slate-200 border-b-2 border-slate-100 focus:border-indigo-600 transition-colors pb-4"
-                      />
-                    </div>
-
-                    <div className="space-y-2">
-                      <label className="text-[10px] font-bold uppercase text-slate-400 tracking-widest px-1">
-                        Detailed Description
-                      </label>
-                      <textarea
-                        rows={4}
-                        value={formData.description}
-                        onChange={(e) =>
-                          setFormData((p) => ({
-                            ...p,
-                            description: e.target.value,
-                          }))
-                        }
-                        placeholder="Explain what makes this service unique..."
-                        className="w-full p-5 bg-slate-50 rounded-2xl border-none font-medium outline-none resize-none leading-relaxed focus:ring-2 focus:ring-indigo-500/20 transition-all"
-                      />
-                    </div>
-                  </section>
-
-                  <section className="bg-white border border-slate-200 rounded-[2.5rem] p-8 shadow-sm">
-                    <div className="flex items-center justify-between mb-8">
-                      <div className="flex items-center gap-3">
-                        <ImageIcon className="text-indigo-600" size={20} />
-                        <h3 className="text-lg font-bold">Portfolio Media</h3>
-                      </div>
-                      <label className="bg-indigo-600 text-white px-6 py-2.5 rounded-xl font-bold text-xs cursor-pointer hover:bg-indigo-700 transition-all shadow-md shadow-indigo-200">
-                        <span className="flex items-center gap-2">
-                          <Plus size={14} /> Add Images
-                        </span>
-                        <input
-                          type="file"
-                          multiple
-                          className="hidden"
-                          accept="image/*"
-                          onChange={handleImageChange}
-                        />
-                      </label>
-                    </div>
-
-                    {previews.length === 0 ? (
-                      <div className="border-2 border-dashed border-slate-100 rounded-[2rem] p-12 text-center">
-                        <p className="text-slate-400 font-medium">
-                          No images uploaded yet
-                        </p>
-                      </div>
-                    ) : (
-                      <div className="grid grid-cols-2 sm:grid-cols-4 gap-4">
-                        {previews.map((src, i) => (
-                          <div
-                            key={i}
-                            className="relative aspect-square rounded-2xl overflow-hidden group border border-slate-100"
-                          >
-                            <Image
-                              src={src}
-                              fill
-                              className="object-cover"
-                              alt=""
-                            />
-                            <button
-                              type="button"
-                              onClick={() => {
-                                setImageFiles((prev) =>
-                                  prev.filter((_, idx) => idx !== i)
-                                );
-                                setPreviews((prev) =>
-                                  prev.filter((_, idx) => idx !== i)
-                                );
-                              }}
-                              className="absolute top-2 right-2 bg-white/90 backdrop-blur-md text-red-500 p-1.5 rounded-lg opacity-0 group-hover:opacity-100 transition-opacity shadow-sm"
-                            >
-                              <X size={16} />
-                            </button>
-                          </div>
-                        ))}
-                      </div>
-                    )}
-                  </section>
-                </div>
-
-                {/* Logistics Column */}
-                <div className="lg:col-span-4 space-y-6">
-                  <section className="bg-slate-900 rounded-[2.5rem] p-8 text-white shadow-xl relative overflow-hidden">
-                    <div className="relative z-10 space-y-10">
-                      <h3 className="text-lg font-bold flex items-center gap-2">
-                        <Zap size={18} className="text-indigo-400" /> Logistics
-                      </h3>
-
-                      <div className="space-y-2">
-                        <p className="text-[10px] font-bold uppercase tracking-widest text-slate-400">
-                          Base Rate
-                        </p>
-                        <div className="flex items-baseline gap-1">
-                          <span className="text-2xl font-bold text-indigo-400">
-                            $
-                          </span>
-                          <input
-                            type="number"
-                            value={formData.base_price}
-                            onChange={(e) =>
-                              setFormData((p) => ({
-                                ...p,
-                                base_price: e.target.value,
-                              }))
-                            }
-                            placeholder="0"
-                            className="bg-transparent text-5xl font-black outline-none w-full placeholder:text-slate-700"
-                          />
-                          <span className="text-sm font-bold text-slate-500 uppercase">
-                            USD
-                          </span>
-                        </div>
-                      </div>
-
-                      <div className="space-y-4">
-                        <p className="text-[10px] font-bold uppercase tracking-widest text-slate-400">
-                          Duration
-                        </p>
-                        <div className="flex items-center gap-4 bg-white/5 p-4 rounded-2xl border border-white/10">
-                          <Clock size={20} className="text-indigo-400" />
-                          <input
-                            type="number"
-                            value={formData.duration}
-                            onChange={(e) =>
-                              setFormData((p) => ({
-                                ...p,
-                                duration: e.target.value,
-                              }))
-                            }
-                            placeholder="Min"
-                            className="bg-transparent text-2xl font-bold outline-none w-20 placeholder:text-slate-700"
-                          />
-                          <span className="text-xs font-bold text-slate-400 uppercase">
-                            Minutes
-                          </span>
-                        </div>
-                      </div>
-
-                      <div className="pt-6 border-t border-white/10 space-y-4">
-                        <div className="flex items-center gap-3 text-xs text-slate-400 font-medium">
-                          <Globe size={14} className="text-indigo-400" />
-                          <span>Visible to global marketplace</span>
-                        </div>
-                        <div className="flex items-center gap-3 text-xs text-slate-400 font-medium">
-                          <ShieldCheck size={14} className="text-indigo-400" />
-                          <span>Verified Secure Transaction</span>
-                        </div>
-                      </div>
-                    </div>
-                  </section>
-
-                  <div className="bg-indigo-50 p-6 rounded-[2rem] border border-indigo-100">
-                    <p className="text-xs text-indigo-700 leading-relaxed italic font-medium">
-                      "High-quality descriptions and clear pricing increase
-                      booking conversion by up to 40%."
-                    </p>
-                  </div>
-                </div>
-              </motion.div>
-            )}
-          </AnimatePresence>
-        </form>
-
-        {/* DYNAMIC ACTION BAR */}
-        <div className="fixed bottom-8 left-1/2 -translate-x-1/2 z-[100] w-full max-w-md px-6">
-          <motion.div
-            initial={{ y: 100 }}
-            animate={{ y: 0 }}
-            className="bg-slate-900 shadow-[0_20px_50px_rgba(0,0,0,0.3)] rounded-[2rem] p-3 flex items-center justify-between border border-white/10"
-          >
-            <div className="pl-6 pr-4">
-              <p className="text-[9px] font-black uppercase tracking-widest text-indigo-400">
-                Status
-              </p>
-              <p className="text-xs font-bold text-white truncate max-w-[120px]">
-                {progress === 100 ? "Ready to Launch" : "Drafting Service"}
-              </p>
-            </div>
-
-            <motion.button
-              whileTap={{ scale: 0.95 }}
-              form="service-form"
-              disabled={progress < 100}
-              className={`flex items-center gap-3 px-8 py-3.5 rounded-2xl font-black text-xs tracking-tighter transition-all ${
-                progress === 100
-                  ? "bg-indigo-600 text-white hover:bg-indigo-500 shadow-lg shadow-indigo-500/20"
-                  : "bg-slate-800 text-slate-500 cursor-not-allowed"
-              }`}
-            >
-              <Sparkles size={16} />
-              PUBLISH NOW
-            </motion.button>
-          </motion.div>
+    <div className="min-h-screen bg-[#F8FAFC] pb-40">
+      <main className="max-w-7xl mx-auto px-6 pt-10">
+        <div className="mb-10">
+          <StepIndicator
+            currentStep={currentStep}
+            setCurrentStep={setCurrentStep}
+            categoryId={formData.category_id}
+          />
         </div>
-      </main>
 
-      <style jsx global>{`
-        input[type="number"]::-webkit-inner-spin-button,
-        input[type="number"]::-webkit-outer-spin-button {
-          -webkit-appearance: none;
-          margin: 0;
-        }
-        ::placeholder {
-          color: #cbd5e1;
-          opacity: 1;
-        }
-      `}</style>
+        <div className="min-h-[60vh]">
+          {currentStep === 1 && (
+            <Step1Classification
+              formData={formData}
+              setFormData={setFormData}
+              categories={categories}
+              activeTypes={activeTypes}
+            />
+          )}
+
+          {currentStep === 2 && (
+            <Step2Identity
+              formData={formData}
+              setFormData={setFormData}
+              authUser={authUser}
+              owners={owners}
+              previews={previews}
+              setPreviews={setPreviews}
+              setImageFiles={setImageFiles}
+            />
+          )}
+
+          {currentStep === 3 && (
+            <Step3Checklist formData={formData} setFormData={setFormData} />
+          )}
+
+          {currentStep === 4 && (
+            <Step4Inventory formData={formData} setFormData={setFormData} />
+          )}
+
+          {currentStep === 5 && (
+            <Step5Pricing formData={formData} setFormData={setFormData} />
+          )}
+        </div>
+
+        <NavigationFooter
+          currentStep={currentStep}
+          setCurrentStep={setCurrentStep}
+          typeId={formData.type_id}
+          onNext={handleNextStep}
+          onSubmit={handleSubmit}
+          totalSteps={5}
+          loading={loading}
+        />
+      </main>
     </div>
   );
 }
