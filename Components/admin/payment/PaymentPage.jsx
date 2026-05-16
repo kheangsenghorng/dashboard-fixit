@@ -8,7 +8,6 @@ import {
   Download,
   Hash,
   Calendar,
-  ArrowUpRight,
   Copy,
   Check,
   MapPin,
@@ -22,7 +21,6 @@ import {
   Layers,
   ShoppingCart,
   ExternalLink,
-  TrendingUp,
   AlertTriangle,
   Ban,
   Banknote,
@@ -31,6 +29,7 @@ import {
   ShieldQuestion,
   AlertCircle,
 } from "lucide-react";
+
 import { useRequireAuth } from "../../../app/hooks/useRequireAuth";
 import { useServiceBookingStore } from "../../../app/store/useServiceBookingStore";
 import ContentLoader from "../../ContentLoader";
@@ -38,13 +37,14 @@ import ServiceBookingListener from "../../realtime/ServiceBookingListener";
 import useServicePaymentKhqrStore from "../../../app/store/khqr/useServicePaymentKhqrStore";
 import PaymentCheckOverlay from "../../PaymentCheckOverlay";
 import PaymentListener from "../../realtime/PaymentListener";
-//mock daTa
 
 // ─── Helpers ──────────────────────────────────────────────────────────────────
+
 const cn = (...c) => c.filter(Boolean).join(" ");
 
 const fmt = (dateStr) => {
   if (!dateStr) return "—";
+
   return new Date(dateStr).toLocaleDateString("en-US", {
     month: "short",
     day: "numeric",
@@ -54,13 +54,34 @@ const fmt = (dateStr) => {
 
 const fmtTime = (dateStr) => {
   if (!dateStr) return null;
+
   return new Date(dateStr).toLocaleTimeString("en-US", {
     hour: "2-digit",
     minute: "2-digit",
   });
 };
 
+const getPayments = (booking) => {
+  if (Array.isArray(booking?.payments)) return booking.payments;
+  if (Array.isArray(booking?.payment)) return booking.payment;
+  if (booking?.payment) return [booking.payment];
+
+  return [];
+};
+
+const getMainPayment = (booking) => {
+  const payments = getPayments(booking);
+
+  return payments.find((p) => p?.status === "paid") ?? payments[0] ?? null;
+};
+
+const safeMoney = (value) => {
+  const number = parseFloat(value || 0);
+  return Number.isNaN(number) ? 0 : number;
+};
+
 // ─── Status Config ────────────────────────────────────────────────────────────
+
 const BOOKING_STATUS = {
   pending: {
     label: "Pending",
@@ -140,18 +161,35 @@ const PAYMENT_STATUS = {
     text: "text-emerald-700",
     ring: "ring-emerald-200",
   },
+
   pending: {
     label: "Pending",
     bg: "bg-amber-50",
     text: "text-amber-700",
     ring: "ring-amber-200",
   },
+
   refunded: {
     label: "Refunded",
     bg: "bg-blue-50",
     text: "text-blue-700",
     ring: "ring-blue-200",
   },
+
+  failed: {
+    label: "Failed",
+    bg: "bg-rose-50",
+    text: "text-rose-700",
+    ring: "ring-rose-200",
+  },
+
+  cancelled: {
+    label: "Cancelled",
+    bg: "bg-slate-100",
+    text: "text-slate-500",
+    ring: "ring-slate-200",
+  },
+
   unpaid: {
     label: "Unpaid",
     bg: "bg-slate-100",
@@ -161,8 +199,10 @@ const PAYMENT_STATUS = {
 };
 
 // ─── Sub-components ───────────────────────────────────────────────────────────
+
 const StatusBadge = ({ config }) => {
   const Icon = config?.icon;
+
   return (
     <span
       className={cn(
@@ -182,6 +222,9 @@ const StatusBadge = ({ config }) => {
           )}
         />
       )}
+
+      {Icon && <Icon size={11} />}
+
       {config?.label}
     </span>
   );
@@ -189,13 +232,16 @@ const StatusBadge = ({ config }) => {
 
 const InfoRow = ({ icon: Icon, label, value, mono = false, link }) => {
   if (!value && value !== 0) return null;
+
   return (
     <div className="flex items-start gap-2">
       <Icon size={12} className="mt-0.5 shrink-0 text-slate-400" />
+
       <div className="min-w-0">
         <span className="text-[10px] text-slate-400 uppercase tracking-wider block leading-none mb-0.5">
           {label}
         </span>
+
         {link ? (
           <a
             href={link}
@@ -224,6 +270,7 @@ const InfoRow = ({ icon: Icon, label, value, mono = false, link }) => {
 };
 
 // ─── Expanded Detail Panel ────────────────────────────────────────────────────
+
 const ExpandedRow = ({
   booking,
   onCheckTransaction,
@@ -231,64 +278,81 @@ const ExpandedRow = ({
   transactionResult,
   onCloseTransactionResult,
 }) => {
-  const pmt = booking.payment?.[0] ?? null;
+  const pmt = getMainPayment(booking);
   const isChecking = checkingId === booking.id;
+  const address = booking.address;
 
   return (
     <tr>
       <td colSpan={7} className="border-b border-slate-100 px-0 py-0">
         <div className="grid grid-cols-1 gap-4 border-t border-slate-100 bg-slate-50/80 px-6 py-4 text-xs md:grid-cols-4">
+          {/* Location */}
           <div className="space-y-2">
             <p className="mb-2 text-[10px] font-bold uppercase tracking-widest text-slate-400">
               Location
             </p>
+
             <InfoRow
               icon={Home}
               label="Street / House"
-              value={`St. ${booking.street_number}, No. ${booking.house_number}`}
+              value={`St. ${address?.street_number ?? "—"}, No. ${
+                address?.house_number ?? "—"
+              }`}
             />
+
             <InfoRow
               icon={MapPin}
               label="Full Address"
-              value={booking.address}
+              value={address?.address}
             />
+
             <InfoRow
               icon={Navigation}
               label="Coordinates"
-              value={`${booking.latitude}, ${booking.longitude}`}
+              value={
+                address?.latitude && address?.longitude
+                  ? `${address.latitude}, ${address.longitude}`
+                  : null
+              }
               mono
             />
-            {booking.map_url && (
+
+            {address?.map_url && (
               <InfoRow
                 icon={ExternalLink}
                 label="Map Link"
                 value="Open in Maps"
-                link={booking.map_url}
+                link={address.map_url}
               />
             )}
           </div>
 
+          {/* Booking Details */}
           <div className="space-y-2">
             <p className="mb-2 text-[10px] font-bold uppercase tracking-widest text-slate-400">
               Booking Details
             </p>
+
             <InfoRow
               icon={ShoppingCart}
               label="Quantity"
-              value={`${booking.quantity} unit${
+              value={`${booking.quantity ?? 0} unit${
                 booking.quantity > 1 ? "s" : ""
               }`}
             />
+
             <InfoRow
               icon={Layers}
               label="Category"
               value={booking.service?.category?.name}
             />
+
             <InfoRow
               icon={Package}
               label="Type"
               value={booking.service?.type?.name}
             />
+
             {booking.notes && (
               <InfoRow
                 icon={ClipboardList}
@@ -298,20 +362,24 @@ const ExpandedRow = ({
             )}
           </div>
 
+          {/* Timeline */}
           <div className="space-y-2">
             <p className="mb-2 text-[10px] font-bold uppercase tracking-widest text-slate-400">
               Timeline
             </p>
+
             <InfoRow
               icon={Calendar}
               label="Created At"
               value={fmt(booking.created_at)}
             />
+
             <InfoRow
               icon={Calendar}
               label="Updated At"
               value={fmt(booking.updated_at)}
             />
+
             {booking.customer_completed_at && (
               <InfoRow
                 icon={CheckCircle2}
@@ -321,6 +389,7 @@ const ExpandedRow = ({
                 )}`}
               />
             )}
+
             {booking.auto_complete_at && (
               <InfoRow
                 icon={Clock}
@@ -330,6 +399,7 @@ const ExpandedRow = ({
             )}
           </div>
 
+          {/* Payment Details */}
           <div className="space-y-2">
             <p className="mb-2 text-[10px] font-bold uppercase tracking-widest text-slate-400">
               Payment Details
@@ -356,9 +426,13 @@ const ExpandedRow = ({
                   <button
                     onClick={(e) => {
                       e.stopPropagation();
+
+                      if (!pmt.transaction_id) return;
+
                       onCheckTransaction(booking.id, pmt.transaction_id);
                     }}
-                    className="rounded border border-indigo-200 bg-indigo-50 px-2 py-1 text-[10px] font-medium text-indigo-600 hover:bg-indigo-100"
+                    disabled={!pmt.transaction_id}
+                    className="rounded border border-indigo-200 bg-indigo-50 px-2 py-1 text-[10px] font-medium text-indigo-600 hover:bg-indigo-100 disabled:opacity-40 disabled:cursor-not-allowed"
                   >
                     Check Payment
                   </button>
@@ -367,17 +441,25 @@ const ExpandedRow = ({
                 <InfoRow
                   icon={User}
                   label="User ID / Owner ID"
-                  value={`#${pmt.user_id} / #${pmt.owner_id}`}
+                  value={`#${pmt.user_id ?? "—"} / #${pmt.owner_id ?? "—"}`}
                 />
+
                 <InfoRow
                   icon={Tag}
                   label="Coupon ID"
                   value={pmt.coupons_id ? `#${pmt.coupons_id}` : "None"}
                 />
+
                 <InfoRow
                   icon={CreditCard}
                   label="Method"
                   value={pmt.method?.toUpperCase()}
+                />
+
+                <InfoRow
+                  icon={Banknote}
+                  label="Final Amount"
+                  value={`$${safeMoney(pmt.final_amount).toFixed(2)}`}
                 />
               </>
             ) : (
@@ -392,44 +474,58 @@ const ExpandedRow = ({
     </tr>
   );
 };
+
 // ─── Main Page ────────────────────────────────────────────────────────────────
+
 export default function PaymentPage() {
   const { user: authUser, initialized } = useRequireAuth();
+
   const [copiedId, setCopiedId] = useState(null);
   const [expandedRow, setExpandedRow] = useState(null);
   const [transactionResults, setTransactionResults] = useState({});
   const [checkingId, setCheckingId] = useState(null);
   const [paymentCheckMessage, setPaymentCheckMessage] = useState(null);
+
   const { serviceBookings, pagination, loading, fetchServiceBookings } =
     useServiceBookingStore();
+
   const { checkTransactionByExternalRef } = useServicePaymentKhqrStore();
+
   useEffect(() => {
     fetchServiceBookings();
   }, [fetchServiceBookings]);
 
-  console.log(serviceBookings);
+  const bookings = Array.isArray(serviceBookings) ? serviceBookings : [];
 
   // Stats
-  const totalBookings = pagination?.total || serviceBookings.length;
-  const pendingCount = serviceBookings.filter(
-    (b) => b.booking_status === "pending"
-  ).length;
-  const paidCount = serviceBookings.filter((b) =>
-    b.payment?.some((p) => p.status === "paid")
+  const totalBookings = pagination?.total || bookings.length;
+
+  const pendingCount = bookings.filter(
+    (b) => b?.booking_status === "pending"
   ).length;
 
-  const totalRevenue = serviceBookings.reduce((sum, b) => {
-    const p = b.payment.find((p) => p.status === "paid");
-    return sum + (p ? parseFloat(p.final_amount) : 0);
+  const paidCount = bookings.filter((b) =>
+    getPayments(b).some((p) => p?.status === "paid")
+  ).length;
+
+  const totalRevenue = bookings.reduce((sum, b) => {
+    const p = getPayments(b).find((p) => p?.status === "paid");
+
+    return sum + (p ? safeMoney(p.final_amount) : 0);
   }, 0);
 
   const handleCopy = (text) => {
+    if (!text) return;
+
     navigator.clipboard.writeText(text);
     setCopiedId(text);
+
     setTimeout(() => setCopiedId(null), 2000);
   };
 
-  const toggleRow = (id) => setExpandedRow((prev) => (prev === id ? null : id));
+  const toggleRow = (id) => {
+    setExpandedRow((prev) => (prev === id ? null : id));
+  };
 
   const handleCheckTransaction = async (bookingId, transactionId) => {
     try {
@@ -437,7 +533,6 @@ export default function PaymentPage() {
       setPaymentCheckMessage(null);
 
       const result = await checkTransactionByExternalRef(transactionId);
-      console.log("normalized result:", result);
 
       setTransactionResults((prev) => ({
         ...prev,
@@ -447,7 +542,9 @@ export default function PaymentPage() {
       if (result?.responseCode === 0) {
         setPaymentCheckMessage({
           type: "success",
-          text: `Payment Success • ${result?.data?.amount} ${result?.data?.currency}`,
+          text: `Payment Success • ${result?.data?.amount ?? ""} ${
+            result?.data?.currency ?? ""
+          }`,
         });
       } else {
         setPaymentCheckMessage({
@@ -514,6 +611,7 @@ export default function PaymentPage() {
       </div>
     );
   }
+
   if (!initialized) return null;
   if (!authUser) return null;
 
@@ -522,26 +620,43 @@ export default function PaymentPage() {
       <div className="max-w-7xl mx-auto space-y-6">
         <ServiceBookingListener />
         <PaymentListener />
-        {/* ── Header ── */}
+
+        {paymentCheckMessage && (
+          <div
+            className={cn(
+              "fixed right-5 top-5 z-50 rounded-xl px-4 py-3 text-sm font-semibold shadow-lg border",
+              paymentCheckMessage.type === "success"
+                ? "bg-emerald-50 text-emerald-700 border-emerald-200"
+                : "bg-rose-50 text-rose-700 border-rose-200"
+            )}
+          >
+            {paymentCheckMessage.text}
+          </div>
+        )}
+
+        {/* Header */}
         <div className="flex flex-col md:flex-row md:items-center justify-between gap-4">
           <div>
             <div className="flex items-center gap-2 mb-1">
               <div className="w-1 h-5 bg-indigo-500 rounded-full" />
+
               <h1 className="text-xl font-bold tracking-tight text-slate-900">
                 Bookings & Payments
               </h1>
             </div>
+
             <p className="text-sm text-slate-500 pl-3">
               Full transaction and service booking overview
             </p>
           </div>
+
           <button className="h-9 px-4 rounded-lg border border-slate-200 bg-white text-sm font-medium text-slate-600 hover:bg-slate-50 shadow-sm transition flex items-center gap-2 self-start">
             <Download size={14} />
             Export CSV
           </button>
         </div>
 
-        {/* ── Stats ── */}
+        {/* Stats */}
         <div className="grid grid-cols-2 md:grid-cols-4 gap-3">
           {STATS.map(({ label, value, icon: Icon, color, bg }) => (
             <div
@@ -552,16 +667,18 @@ export default function PaymentPage() {
                 <span className="text-[11px] font-bold text-slate-400 uppercase tracking-wider">
                   {label}
                 </span>
+
                 <div className={cn("p-2 rounded-lg", bg)}>
                   <Icon size={15} className={color} />
                 </div>
               </div>
+
               <p className={cn("text-2xl font-bold", color)}>{value}</p>
             </div>
           ))}
         </div>
 
-        {/* ── Table ── */}
+        {/* Table */}
         <div className="bg-white rounded-xl border border-slate-200 shadow-sm overflow-hidden">
           <div className="overflow-x-auto">
             <table className="w-full text-sm">
@@ -570,216 +687,276 @@ export default function PaymentPage() {
                   <th className="px-5 py-3.5 text-left text-[10px] font-bold text-slate-400 uppercase tracking-wider">
                     Booking
                   </th>
+
                   <th className="px-5 py-3.5 text-left text-[10px] font-bold text-slate-400 uppercase tracking-wider">
                     Service
                   </th>
+
                   <th className="px-5 py-3.5 text-left text-[10px] font-bold text-slate-400 uppercase tracking-wider">
                     Customer
                   </th>
+
                   <th className="px-5 py-3.5 text-left text-[10px] font-bold text-slate-400 uppercase tracking-wider">
                     Transaction
                   </th>
+
                   <th className="px-5 py-3.5 text-left text-[10px] font-bold text-slate-400 uppercase tracking-wider">
                     Payment
                   </th>
+
                   <th className="px-5 py-3.5 text-left text-[10px] font-bold text-slate-400 uppercase tracking-wider">
                     Booking Status
                   </th>
+
                   <th className="px-5 py-3.5" />
                 </tr>
               </thead>
+
               <tbody>
-                {serviceBookings.map((booking) => {
-                  const pmt =
-                    booking.payment.find((p) => p.status === "paid") ??
-                    booking.payment[0] ??
-                    null;
-                  const pmtConfig = pmt
-                    ? PAYMENT_STATUS[pmt.status]
-                    : PAYMENT_STATUS.unpaid;
-                  const bkConfig =
-                    BOOKING_STATUS[booking.booking_status] ??
-                    BOOKING_STATUS.pending;
-                  const isExpanded = expandedRow === booking.id;
+                {bookings.length === 0 ? (
+                  <tr>
+                    <td
+                      colSpan={7}
+                      className="px-5 py-10 text-center text-sm text-slate-400"
+                    >
+                      No bookings found
+                    </td>
+                  </tr>
+                ) : (
+                  bookings.map((booking) => {
+                    const pmt = getMainPayment(booking);
 
-                  return (
-                    <React.Fragment key={booking.id}>
-                      <tr
-                        className={cn(
-                          "border-b border-slate-100 transition-colors cursor-pointer",
-                          isExpanded
-                            ? "bg-indigo-50/30"
-                            : "hover:bg-slate-50/60"
-                        )}
-                        onClick={() => toggleRow(booking.id)}
-                      >
-                        {/* Booking ID + Date */}
-                        <td className="px-5 py-4 align-top">
-                          <div className="space-y-1">
-                            <span className="font-mono text-[10px] font-bold text-indigo-600 bg-indigo-50 px-1.5 py-0.5 rounded border border-indigo-100">
-                              #BK-00{booking.id}
-                            </span>
-                            <div className="flex items-center gap-1 text-[11px] text-slate-500 pt-0.5">
-                              <Calendar size={11} className="text-slate-400" />
-                              {booking.booking_date}
-                            </div>
-                            {booking.booking_hours && (
-                              <div className="flex items-center gap-1 text-[10px] text-slate-400">
-                                <Clock size={10} />
-                                {booking.booking_hours}
+                    const pmtConfig = pmt
+                      ? PAYMENT_STATUS[pmt.status] ?? PAYMENT_STATUS.unpaid
+                      : PAYMENT_STATUS.unpaid;
+
+                    const bkConfig =
+                      BOOKING_STATUS[booking.booking_status] ??
+                      BOOKING_STATUS.pending;
+
+                    const isExpanded = expandedRow === booking.id;
+
+                    const transactionId = pmt?.transaction_id || "";
+                    const shortTransactionId =
+                      transactionId.length > 12
+                        ? `${transactionId.substring(0, 12)}...`
+                        : transactionId;
+
+                    return (
+                      <React.Fragment key={booking.id}>
+                        <tr
+                          className={cn(
+                            "border-b border-slate-100 transition-colors cursor-pointer",
+                            isExpanded
+                              ? "bg-indigo-50/30"
+                              : "hover:bg-slate-50/60"
+                          )}
+                          onClick={() => toggleRow(booking.id)}
+                        >
+                          {/* Booking ID + Date */}
+                          <td className="px-5 py-4 align-top">
+                            <div className="space-y-1">
+                              <span className="font-mono text-[10px] font-bold text-indigo-600 bg-indigo-50 px-1.5 py-0.5 rounded border border-indigo-100">
+                                #BK-00{booking.id}
+                              </span>
+
+                              <div className="flex items-center gap-1 text-[11px] text-slate-500 pt-0.5">
+                                <Calendar
+                                  size={11}
+                                  className="text-slate-400"
+                                />
+                                {booking.booking_date ?? "—"}
                               </div>
-                            )}
-                          </div>
-                        </td>
 
-                        {/* Service */}
-                        <td className="px-5 py-4 align-top">
-                          <p className="font-semibold text-[13px] text-slate-900 leading-snug">
-                            {booking.service.name}
-                          </p>
-                          <div className="flex items-center gap-1.5 mt-1">
-                            <span className="text-[9px] font-bold uppercase tracking-wider bg-slate-100 text-slate-500 px-1.5 py-0.5 rounded">
-                              {booking.service.category?.name}
-                            </span>
-                            <span className="text-[9px] font-bold uppercase tracking-wider bg-slate-100 text-slate-500 px-1.5 py-0.5 rounded">
-                              {booking.service.type?.name}
-                            </span>
-                          </div>
-                          <div className="flex items-center gap-1 mt-1.5 text-[10px] text-slate-400">
-                            <ShoppingCart size={10} />
-                            Qty: {booking.quantity}
-                          </div>
-                        </td>
-
-                        {/* Customer */}
-                        <td className="px-5 py-4 align-top">
-                          <div className="flex items-center gap-2">
-                            <div className="w-7 h-7 rounded-lg bg-indigo-100 flex items-center justify-center text-[11px] font-bold text-indigo-600 shrink-0">
-                              {booking.user.name.charAt(0)}
+                              {booking.booking_hours && (
+                                <div className="flex items-center gap-1 text-[10px] text-slate-400">
+                                  <Clock size={10} />
+                                  {booking.booking_hours}
+                                </div>
+                              )}
                             </div>
-                            <div className="min-w-0">
-                              <p className="text-[12px] font-semibold text-slate-900 truncate leading-tight">
-                                {booking.user.name}
-                              </p>
-                              <p className="text-[10px] text-slate-400 truncate max-w-[110px]">
-                                {booking.user.email}
-                              </p>
-                            </div>
-                          </div>
-                        </td>
+                          </td>
 
-                        {/* Transaction */}
-                        <td className="px-5 py-4 align-top">
-                          {pmt ? (
-                            <div className="space-y-1.5">
-                              <div className="flex flex-col">
-                                <span className="text-[15px] font-bold text-slate-900">
-                                  ${pmt.final_amount}
+                          {/* Service */}
+                          <td className="px-5 py-4 align-top">
+                            <p className="font-semibold text-[13px] text-slate-900 leading-snug">
+                              {booking.service?.name ??
+                                booking.service?.title ??
+                                "No service"}
+                            </p>
+
+                            <div className="flex items-center gap-1.5 mt-1">
+                              {booking.service?.category?.name && (
+                                <span className="text-[9px] font-bold uppercase tracking-wider bg-slate-100 text-slate-500 px-1.5 py-0.5 rounded">
+                                  {booking.service.category.name}
                                 </span>
-                                {parseFloat(pmt.discount_amount) > 0 && (
-                                  <div className="flex items-center gap-1">
-                                    <span className="text-[9px] text-slate-400 line-through">
-                                      ${pmt.original_amount}
-                                    </span>
-                                    <span className="text-[9px] font-bold text-emerald-600">
-                                      -{pmt.discount_amount}
-                                    </span>
-                                    {pmt.coupons_id && (
-                                      <Tag
+                              )}
+
+                              {booking.service?.type?.name && (
+                                <span className="text-[9px] font-bold uppercase tracking-wider bg-slate-100 text-slate-500 px-1.5 py-0.5 rounded">
+                                  {booking.service.type.name}
+                                </span>
+                              )}
+                            </div>
+
+                            <div className="flex items-center gap-1 mt-1.5 text-[10px] text-slate-400">
+                              <ShoppingCart size={10} />
+                              Qty: {booking.quantity ?? 0}
+                            </div>
+                          </td>
+
+                          {/* Customer */}
+                          <td className="px-5 py-4 align-top">
+                            <div className="flex items-center gap-2">
+                              <div className="w-7 h-7 rounded-lg bg-indigo-100 flex items-center justify-center text-[11px] font-bold text-indigo-600 shrink-0">
+                                {booking.user?.name?.charAt(0) ?? "U"}
+                              </div>
+
+                              <div className="min-w-0">
+                                <p className="text-[12px] font-semibold text-slate-900 truncate leading-tight">
+                                  {booking.user?.name ?? "Unknown user"}
+                                </p>
+
+                                <p className="text-[10px] text-slate-400 truncate max-w-[110px]">
+                                  {booking.user?.email ??
+                                    booking.user?.phone ??
+                                    "No contact"}
+                                </p>
+                              </div>
+                            </div>
+                          </td>
+
+                          {/* Transaction */}
+                          <td className="px-5 py-4 align-top">
+                            {pmt ? (
+                              <div className="space-y-1.5">
+                                <div className="flex flex-col">
+                                  <span className="text-[15px] font-bold text-slate-900">
+                                    ${safeMoney(pmt.final_amount).toFixed(2)}
+                                  </span>
+
+                                  {safeMoney(pmt.discount_amount) > 0 && (
+                                    <div className="flex items-center gap-1">
+                                      <span className="text-[9px] text-slate-400 line-through">
+                                        $
+                                        {safeMoney(pmt.original_amount).toFixed(
+                                          2
+                                        )}
+                                      </span>
+
+                                      <span className="text-[9px] font-bold text-emerald-600">
+                                        -$
+                                        {safeMoney(pmt.discount_amount).toFixed(
+                                          2
+                                        )}
+                                      </span>
+
+                                      {pmt.coupons_id && (
+                                        <Tag
+                                          size={9}
+                                          className="text-indigo-400"
+                                        />
+                                      )}
+                                    </div>
+                                  )}
+                                </div>
+
+                                {transactionId ? (
+                                  <button
+                                    onClick={(e) => {
+                                      e.stopPropagation();
+                                      handleCopy(transactionId);
+                                    }}
+                                    className="group flex items-center gap-1.5 font-mono text-[9px] text-slate-400 bg-slate-50 px-2 py-1 rounded border border-slate-200 hover:bg-slate-100 transition-all active:scale-95"
+                                  >
+                                    <Hash size={9} />
+                                    {shortTransactionId}
+
+                                    {copiedId === transactionId ? (
+                                      <Check
                                         size={9}
-                                        className="text-indigo-400"
+                                        className="text-emerald-500"
+                                      />
+                                    ) : (
+                                      <Copy
+                                        size={9}
+                                        className="opacity-0 group-hover:opacity-100 transition-opacity"
                                       />
                                     )}
-                                  </div>
+                                  </button>
+                                ) : (
+                                  <span className="text-[10px] text-slate-400 italic">
+                                    No transaction ID
+                                  </span>
                                 )}
                               </div>
-                              <button
-                                onClick={(e) => {
-                                  e.stopPropagation();
-                                  handleCopy(pmt.transaction_id);
-                                }}
-                                className="group flex items-center gap-1.5 font-mono text-[9px] text-slate-400 bg-slate-50 px-2 py-1 rounded border border-slate-200 hover:bg-slate-100 transition-all active:scale-95"
-                              >
-                                <Hash size={9} />
-                                {pmt.transaction_id.substring(0, 12)}...
-                                {copiedId === pmt.transaction_id ? (
-                                  <Check
-                                    size={9}
-                                    className="text-emerald-500"
-                                  />
-                                ) : (
-                                  <Copy
-                                    size={9}
-                                    className="opacity-0 group-hover:opacity-100 transition-opacity"
-                                  />
-                                )}
-                              </button>
-                            </div>
-                          ) : (
-                            <span className="text-[11px] text-slate-400 italic">
-                              No payment
-                            </span>
-                          )}
-                        </td>
-
-                        {/* Payment Status */}
-                        <td className="px-5 py-4 align-top">
-                          <StatusBadge config={pmtConfig} />
-                          {pmt && (
-                            <p className="text-[10px] text-slate-400 mt-1.5 font-medium uppercase tracking-wide">
-                              {pmt.method}
-                            </p>
-                          )}
-                        </td>
-
-                        {/* Booking Status */}
-                        <td className="px-5 py-4 align-top">
-                          <StatusBadge config={bkConfig} />
-                          <p className="text-[10px] text-slate-400 mt-1.5">
-                            Customer:{" "}
-                            <span className="font-semibold text-slate-600 capitalize">
-                              {booking.customer_status}
-                            </span>
-                          </p>
-                        </td>
-
-                        {/* Expand Toggle */}
-                        <td className="px-5 py-4 align-top text-right">
-                          <button
-                            onClick={(e) => {
-                              e.stopPropagation();
-                              toggleRow(booking.id);
-                            }}
-                            className={cn(
-                              "w-7 h-7 inline-flex items-center justify-center rounded-lg transition-all",
-                              isExpanded
-                                ? "bg-indigo-100 text-indigo-600 rotate-180"
-                                : "text-slate-400 hover:bg-slate-100 hover:text-slate-600"
+                            ) : (
+                              <span className="text-[11px] text-slate-400 italic">
+                                No payment
+                              </span>
                             )}
-                          >
-                            <ChevronDown size={14} />
-                          </button>
-                        </td>
-                      </tr>
+                          </td>
 
-                      {/* Expanded Detail Row */}
-                      {isExpanded && (
-                        <ExpandedRow
-                          booking={booking}
-                          onCheckTransaction={handleCheckTransaction}
-                          checkingId={checkingId}
-                          transactionResult={transactionResults[booking.id]}
-                          onCloseTransactionResult={(bookingId) => {
-                            setTransactionResults((prev) => ({
-                              ...prev,
-                              [bookingId]: null,
-                            }));
-                          }}
-                        />
-                      )}
-                    </React.Fragment>
-                  );
-                })}
+                          {/* Payment Status */}
+                          <td className="px-5 py-4 align-top">
+                            <StatusBadge config={pmtConfig} />
+
+                            {pmt && (
+                              <p className="text-[10px] text-slate-400 mt-1.5 font-medium uppercase tracking-wide">
+                                {pmt.method ?? "—"}
+                              </p>
+                            )}
+                          </td>
+
+                          {/* Booking Status */}
+                          <td className="px-5 py-4 align-top">
+                            <StatusBadge config={bkConfig} />
+
+                            <p className="text-[10px] text-slate-400 mt-1.5">
+                              Customer:{" "}
+                              <span className="font-semibold text-slate-600 capitalize">
+                                {booking.customer_status ?? "—"}
+                              </span>
+                            </p>
+                          </td>
+
+                          {/* Expand Toggle */}
+                          <td className="px-5 py-4 align-top text-right">
+                            <button
+                              onClick={(e) => {
+                                e.stopPropagation();
+                                toggleRow(booking.id);
+                              }}
+                              className={cn(
+                                "w-7 h-7 inline-flex items-center justify-center rounded-lg transition-all",
+                                isExpanded
+                                  ? "bg-indigo-100 text-indigo-600 rotate-180"
+                                  : "text-slate-400 hover:bg-slate-100 hover:text-slate-600"
+                              )}
+                            >
+                              <ChevronDown size={14} />
+                            </button>
+                          </td>
+                        </tr>
+
+                        {isExpanded && (
+                          <ExpandedRow
+                            booking={booking}
+                            onCheckTransaction={handleCheckTransaction}
+                            checkingId={checkingId}
+                            transactionResult={transactionResults[booking.id]}
+                            onCloseTransactionResult={(bookingId) => {
+                              setTransactionResults((prev) => ({
+                                ...prev,
+                                [bookingId]: null,
+                              }));
+                            }}
+                          />
+                        )}
+                      </React.Fragment>
+                    );
+                  })
+                )}
               </tbody>
             </table>
           </div>
@@ -787,13 +964,14 @@ export default function PaymentPage() {
           {/* Footer */}
           <div className="px-5 py-3.5 border-t border-slate-100 flex items-center justify-between bg-slate-50/30">
             <p className="text-[11px] text-slate-400 font-medium">
-              Showing {serviceBookings.length} of{" "}
-              {pagination?.total || serviceBookings.length} records
+              Showing {bookings.length} of{" "}
+              {pagination?.total || bookings.length} records
             </p>
+
             <div className="flex items-center gap-2">
               <button
                 onClick={() =>
-                  fetchServiceBookings(pagination?.current_page - 1)
+                  fetchServiceBookings((pagination?.current_page || 1) - 1)
                 }
                 disabled={
                   !pagination?.current_page || pagination.current_page <= 1
@@ -802,12 +980,14 @@ export default function PaymentPage() {
               >
                 Previous
               </button>
+
               <span className="text-[11px] text-slate-500 font-medium px-1">
                 {pagination?.current_page ?? 1} / {pagination?.last_page ?? 1}
               </span>
+
               <button
                 onClick={() =>
-                  fetchServiceBookings(pagination?.current_page + 1)
+                  fetchServiceBookings((pagination?.current_page || 1) + 1)
                 }
                 disabled={
                   !pagination?.current_page ||

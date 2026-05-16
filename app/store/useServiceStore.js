@@ -153,6 +153,23 @@ export const useServiceStore = create((set, get) => ({
     }
   },
 
+  // Get services by owner
+
+  fetchServicesByOwner: async (ownerId) => {
+    set({ loading: true });
+
+    try {
+      const res = await serviceService.getByOwner(ownerId);
+
+      set({
+        services: res.data.data,
+        loading: false,
+      });
+    } catch (error) {
+      console.error("Fetch services by owner error:", error);
+      set({ loading: false });
+    }
+  },
   // Create service
   createService: async (data) => {
     try {

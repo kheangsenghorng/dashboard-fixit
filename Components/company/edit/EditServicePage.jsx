@@ -341,50 +341,73 @@ export default function EditServicePage() {
     setCurrentStep((prev) => Math.min(prev + 1, 5));
   };
 
-  const buildCategoryTypeFormData = () => {
+  const buildServiceFormData = () => {
     const data = new FormData();
-
+  
     data.append("_method", "PUT");
+  
     data.append("category_id", formData.category_id || "");
     data.append("type_id", formData.type_id || "");
-
+    data.append("title", formData.title || "");
+    data.append("description", formData.description || "");
+    data.append("status", formData.status || "active");
+  
+    if (isAdmin && formData.owner_id) {
+      data.append("owner_id", formData.owner_id);
+    }
+  
+    newImageFiles.forEach((file) => {
+      data.append("images[]", file);
+    });
+  
     return data;
   };
-
   const handleSubmit = async (event) => {
     if (event) event.preventDefault();
-
+  
     if (!formData.category_id) {
       toast.error("Please select category");
       return;
     }
-
+  
     if (!formData.type_id) {
       toast.error("Please select type");
       return;
     }
-
+  
+    if (!formData.title) {
+      toast.error("Please enter service title");
+      return;
+    }
+  
+    const totalImages = existingImages.length + newImageFiles.length;
+  
+    if (totalImages > 10) {
+      toast.error("This service can have up to 10 images only.");
+      return;
+    }
+  
     setSubmitLoading(true);
-
+  
     try {
-      const data = buildCategoryTypeFormData();
-
+      const data = buildServiceFormData();
+  
       const res = await updateService(id, data);
-
-      if (res?.success || res?.data || res?.id) {
-        toast.success("Category and type updated successfully!");
+  
+      if (res?.success || res?.data?.success || res?.data || res?.id) {
+        toast.success("Service updated successfully!");
         router.push(redirectPath);
         return;
       }
-
-      toast.error(res?.message || "Failed to update category/type.");
+  
+      toast.error(res?.message || "Failed to update service.");
     } catch (error) {
-      console.error("Update category/type error:", error);
-
+      console.error("Update service error:", error);
+  
       toast.error(
         error?.response?.data?.message ||
           error?.message ||
-          "Failed to update category/type."
+          "Failed to update service."
       );
     } finally {
       setSubmitLoading(false);
