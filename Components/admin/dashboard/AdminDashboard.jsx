@@ -13,21 +13,26 @@ import {
   LayoutDashboard,
   Calendar,
   Building2,
+  TrendingUp,
 } from "lucide-react";
 import { useAuthGuard } from "../../../app/hooks/useAuthGuard";
 import StatCard from "./StatCard";
 import RecentUsers from "./RecentUsers";
 import ContentLoader from "../../ContentLoader";
 import { useUsersStore } from "../../../app/store/useUsersStore";
+import useAdminPaymentSplitStore from "../../../app/store/payouts/useAdminPaymentSplitStore";
 
 export default function AdminDashboard() {
   const { user } = useAuthGuard();
 
   const { fetchUsers, users, counts } = useUsersStore();
   const [showFullLoader, setShowFullLoader] = useState(true);
+  const { fetchStats, stats  } =
+    useAdminPaymentSplitStore();
 
   useEffect(() => {
     fetchUsers({ role: "all" });
+    fetchStats();
 
     const timer = setTimeout(() => setShowFullLoader(false), 1200);
     return () => clearTimeout(timer);
@@ -83,36 +88,36 @@ export default function AdminDashboard() {
       {/* STATS GRID */}
       <div className="max-w-7xl mx-auto grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6 animate-in slide-in-from-bottom-4 duration-700">
         <StatCard
-          title="Revenue"
-          value="$45,231"
-          trend="+12%"
+          title="Admin Revenue"
+          value={`$${stats?.total_admin_commission?.toLocaleString() || "0"}`}
+          trend="+12.5%"
           icon={DollarSign}
           isUp={true}
           color="blue"
         />
         <StatCard
+          title="Owner Payouts"
+          value={`$${stats?.total_owner_payout?.toLocaleString() || "0"}`}
+          trend="Stable"
+          icon={TrendingUp} // Changed from MousePointer2 to match financial data
+          isUp={true}
+          color="indigo"
+        />
+        <StatCard
           title="Total Users"
-          value={counts?.total}
+          value={counts?.total?.toLocaleString() || "0"}
           trend="+3%"
           icon={Users}
           isUp={true}
           color="emerald"
         />
         <StatCard
-          title="Campany"
-          value={counts?.owners}
+          title="Active Companies"
+          value={counts?.owners?.toLocaleString() || "0"}
           trend="-0.4%"
           icon={Building2}
           isUp={false}
           color="amber"
-        />
-        <StatCard
-          title="Uptime"
-          value="99.9%"
-          trend="Stable"
-          icon={MousePointer2}
-          isUp={true}
-          color="indigo"
         />
       </div>
 

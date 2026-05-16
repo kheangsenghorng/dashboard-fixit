@@ -10,6 +10,9 @@ export const serviceService = {
   // Get active services
   getActive: (params) => api.get("/services/active", { params }),
 
+  // Get by id owner
+  getByOwner: (ownerId) => api.get(`/services/owner/${ownerId}`),
+
   // Get single service
   getOne: (id) => api.get(`/services/${id}`),
 

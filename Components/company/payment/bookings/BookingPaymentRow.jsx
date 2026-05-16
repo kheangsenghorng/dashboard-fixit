@@ -31,8 +31,8 @@ export default function BookingPaymentRow({
   onCloseTransactionResult,
 }) {
   const pmt =
-    (booking.payment || []).find((p) => p.status === "paid") ??
-    booking.payment?.[0] ??
+    (booking.payments || []).find((p) => p.status === "paid") ??
+    booking.payments?.[0] ??
     null;
 
   const pmtConfig = pmt

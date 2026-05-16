@@ -154,7 +154,7 @@ const StaffBookingAdmin = () => {
           </div>
 
           <div className="lg:col-span-4 space-y-6">
-            <ReceiptSidebar payment={serviceBooking.payment?.[0]} />
+            <ReceiptSidebar payment={serviceBooking.payments?.[0]} />
 
             <ProfileSidebar
               user={serviceBooking.user}
