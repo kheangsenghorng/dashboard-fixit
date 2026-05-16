@@ -15,6 +15,8 @@ import {
   Briefcase,
   PauseCircle,
   Eye,
+  Tag,
+  FilterX,
 } from "lucide-react";
 import { useRouter } from "next/navigation";
 import { toast } from "react-toastify";
@@ -23,11 +25,11 @@ import Image from "next/image";
 
 // Store & Hooks
 import { useAuthGuard } from "../../../app/hooks/useAuthGuard";
+import { useServiceStoreCompany } from "../../../app/store/owner/useServiceStore";
 
 // Custom Components
 import DeleteConfirmModal from "../../../Components/admin/DeleteConfirmModal";
 import ContentLoader from "../../ContentLoader";
-import { useServiceStoreCompany } from "../../../app/store/owner/useServiceStore";
 
 export default function CompactServicesPage() {
   const { user: authUser } = useAuthGuard();
@@ -51,7 +53,6 @@ export default function CompactServicesPage() {
   const [deleting, setDeleting] = useState(false);
   const [isFirstLoad, setIsFirstLoad] = useState(true);
 
-  // Unified Filter State
   const [filters, setFilters] = useState({
     search: "",
     status: "",
@@ -59,10 +60,10 @@ export default function CompactServicesPage() {
     type_id: "",
   });
 
-  // --- Data Fetching Logic ---
+  // --- Data Fetching ---
   const refreshData = async (overrides = {}) => {
     const params = {
-      page: overrides.page ?? 1,
+      page: overrides.page ?? meta?.current_page ?? 1,
       search: filters.search.trim(),
       status: filters.status,
       category_id: filters.category_id,
@@ -82,18 +83,22 @@ export default function CompactServicesPage() {
       refreshData().finally(() => setIsFirstLoad(false));
       return;
     }
-    const timer = setTimeout(() => {
-      refreshData({ page: 1 });
-    }, 500);
+    const timer = setTimeout(() => refreshData({ page: 1 }), 500);
     return () => clearTimeout(timer);
   }, [filters]);
 
+  // Extract Categories and Types from current services for filtering
   const dropDownData = useMemo(() => {
     const cats = new Map();
+    const typs = new Map();
     services.forEach((s) => {
       if (s.category) cats.set(s.category.id, s.category);
+      if (s.type) typs.set(s.type.id, s.type);
     });
-    return { categories: Array.from(cats.values()) };
+    return {
+      categories: Array.from(cats.values()),
+      types: Array.from(typs.values()),
+    };
   }, [services]);
 
   const selectedIds = useMemo(() => Array.from(selectedSet), [selectedSet]);
@@ -112,18 +117,18 @@ export default function CompactServicesPage() {
   };
 
   const handleFilterChange = (key, value) => {
-    setFilters((prev) => ({ ...prev, [key]: value === "all" ? "" : value }));
+    setFilters((prev) => ({ ...prev, [key]: value }));
     setSelectedSet(new Set());
   };
 
   const handleBulkStatusUpdate = async (status) => {
     try {
       await updateManyStatus(selectedIds, status);
-      toast.success(`Updated to ${status}`);
+      toast.success(`Records successfully set to ${status}`);
       setSelectedSet(new Set());
       refreshData();
     } catch {
-      toast.error("Bulk update failed");
+      toast.error("Operation failed");
     }
   };
 
@@ -131,15 +136,26 @@ export default function CompactServicesPage() {
     setDeleting(true);
     try {
       await deleteManyServices(idsToDelete);
-      toast.success("Services deleted");
+      toast.success("Services removed from registry");
       setDeleteOpen(false);
       setSelectedSet(new Set());
       refreshData();
     } catch {
-      toast.error("Delete failed");
+      toast.error("Failed to delete records");
     } finally {
       setDeleting(false);
     }
+  };
+
+  // Helper: Price Range from JSON
+  const getPriceDisplay = (packages) => {
+    if (!packages || packages.length === 0) return "No Pricing";
+    const prices = packages.map((p) => parseFloat(p.price));
+    const min = Math.min(...prices);
+    const max = Math.max(...prices);
+    return min === max
+      ? `$${min.toFixed(2)}`
+      : `$${min.toFixed(2)} - $${max.toFixed(2)}`;
   };
 
   if (!authUser) return null;
@@ -149,8 +165,8 @@ export default function CompactServicesPage() {
       {isFirstLoad && (
         <div className="absolute inset-0 z-[100] flex items-center justify-center bg-[#F8FAFC]">
           <ContentLoader
-            title="Service Registry"
-            subtitle="Loading Data..."
+            title="Service Management"
+            subtitle="Accessing your registry..."
             Icon={Briefcase}
           />
         </div>
@@ -158,21 +174,23 @@ export default function CompactServicesPage() {
 
       {/* HEADER */}
       <div className="max-w-7xl mx-auto flex items-center justify-between">
-        <h1 className="text-xl font-black flex items-center gap-2 tracking-tight">
-          <div className="p-1.5 bg-indigo-600 rounded-lg text-white shadow-lg">
-            <Briefcase size={18} />
-          </div>
-          Registry Catalog
-        </h1>
+        <div>
+          <h1 className="text-xl font-black flex items-center gap-2 tracking-tight">
+            <div className="p-1.5 bg-indigo-600 rounded-lg text-white shadow-lg">
+              <Briefcase size={18} />
+            </div>
+            My Service Registry
+          </h1>
+        </div>
         <button
           onClick={() => router.push("/owner/create/services")}
-          className="bg-slate-900 hover:bg-indigo-600 text-white px-5 py-2.5 rounded-xl font-bold text-[10px] tracking-widest transition-all shadow-lg active:scale-95"
+          className="bg-slate-900 hover:bg-indigo-600 text-white px-5 py-2.5 rounded-xl font-bold text-[10px] tracking-widest transition-all shadow-lg active:scale-95 flex items-center gap-2"
         >
-          <Plus size={16} className="inline mr-1" /> NEW SERVICE
+          <Plus size={16} /> ADD NEW SERVICE
         </button>
       </div>
 
-      {/* STATS SUMMARY */}
+      {/* STATS */}
       <div className="max-w-7xl mx-auto grid grid-cols-1 md:grid-cols-3 gap-4">
         {[
           {
@@ -208,7 +226,7 @@ export default function CompactServicesPage() {
             className={`flex items-center gap-4 bg-white p-4 rounded-2xl border transition-all ${
               filters.status === stat.id
                 ? "border-indigo-500 ring-2 ring-indigo-50 shadow-md"
-                : "border-slate-100 shadow-sm hover:border-indigo-100"
+                : "border-slate-100 shadow-sm hover:border-indigo-200"
             }`}
           >
             <div
@@ -226,41 +244,26 @@ export default function CompactServicesPage() {
         ))}
       </div>
 
-      {/* FILTERS */}
-      <div className="max-w-7xl mx-auto grid grid-cols-1 xl:grid-cols-5 gap-3">
-        <div className="xl:col-span-2 relative group">
+      {/* FILTER BAR */}
+      <div className="max-w-7xl mx-auto flex flex-col xl:flex-row gap-3">
+        <div className="flex-1 relative group">
           <Search
-            className="absolute left-5 top-1/2 -translate-y-1/2 text-slate-300 group-focus-within:text-indigo-600 transition-colors"
+            className="absolute left-5 top-1/2 -translate-y-1/2 text-slate-400 group-focus-within:text-indigo-600 transition-colors"
             size={18}
           />
           <input
             type="text"
-            placeholder="Search catalog by service title..."
+            placeholder="Search your catalog..."
             value={filters.search}
             onChange={(e) => handleFilterChange("search", e.target.value)}
-            className="w-full pl-12 pr-10 py-4 bg-white border border-slate-200 rounded-2xl text-xs font-bold focus:ring-4 focus:ring-indigo-500/5 focus:border-indigo-500 outline-none transition-all"
+            className="w-full pl-12 pr-10 py-4 bg-white border border-slate-200 rounded-2xl text-xs font-bold focus:ring-4 focus:ring-indigo-500/5 outline-none transition-all"
           />
         </div>
-        <div className="relative">
-          <select
-            value={filters.status}
-            onChange={(e) => handleFilterChange("status", e.target.value)}
-            className="appearance-none w-full px-5 py-4 bg-white border border-slate-200 rounded-2xl text-xs font-bold outline-none cursor-pointer"
-          >
-            <option value="">STATUS: ALL</option>
-            <option value="active">ACTIVE</option>
-            <option value="paused">PAUSED</option>
-          </select>
-          <ChevronRight
-            size={14}
-            className="absolute right-4 top-1/2 -translate-y-1/2 rotate-90 text-slate-300 pointer-events-none"
-          />
-        </div>
-        <div className="relative">
+        <div className="grid grid-cols-2 md:grid-cols-3 gap-3">
           <select
             value={filters.category_id}
             onChange={(e) => handleFilterChange("category_id", e.target.value)}
-            className="appearance-none w-full px-5 py-4 bg-white border border-slate-200 rounded-2xl text-xs font-bold outline-none cursor-pointer"
+            className="px-4 py-4 bg-white border border-slate-200 rounded-2xl text-[10px] font-black outline-none cursor-pointer"
           >
             <option value="">CATEGORY: ALL</option>
             {dropDownData.categories.map((c) => (
@@ -269,18 +272,38 @@ export default function CompactServicesPage() {
               </option>
             ))}
           </select>
-          <ChevronRight
-            size={14}
-            className="absolute right-4 top-1/2 -translate-y-1/2 rotate-90 text-slate-300 pointer-events-none"
-          />
+
+          <select
+            value={filters.status}
+            onChange={(e) => handleFilterChange("status", e.target.value)}
+            className="px-4 py-4 bg-white border border-slate-200 rounded-2xl text-[10px] font-black outline-none cursor-pointer"
+          >
+            <option value="">STATUS: ALL</option>
+            <option value="active">ACTIVE</option>
+            <option value="paused">PAUSED</option>
+          </select>
+
+          <button
+            onClick={() =>
+              setFilters({
+                search: "",
+                status: "",
+                category_id: "",
+                type_id: "",
+              })
+            }
+            className="flex items-center justify-center gap-2 px-6 py-4 bg-slate-100 hover:bg-slate-200 text-slate-600 rounded-2xl text-[10px] font-black transition-all"
+          >
+            <FilterX size={14} /> RESET
+          </button>
         </div>
       </div>
 
       {/* DATA TABLE */}
       <div className="max-w-7xl mx-auto">
         <div
-          className={`bg-white border border-slate-200 rounded-[2.5rem] overflow-hidden shadow-sm transition-opacity ${
-            isLoading ? "opacity-50" : "opacity-100"
+          className={`bg-white border border-slate-200 rounded-[2rem] overflow-hidden shadow-sm ${
+            isLoading ? "opacity-50" : ""
           }`}
         >
           <div className="overflow-x-auto">
@@ -290,7 +313,7 @@ export default function CompactServicesPage() {
                   <th className="px-6 py-5 w-10 text-center">
                     <input
                       type="checkbox"
-                      className="w-4 h-4 rounded border-slate-300 text-indigo-600 cursor-pointer"
+                      className="w-4 h-4 rounded border-slate-300 text-indigo-600"
                       checked={isAllSelected}
                       onChange={toggleSelectAll}
                     />
@@ -299,10 +322,13 @@ export default function CompactServicesPage() {
                     Service Profile
                   </th>
                   <th className="px-4 py-5 text-[9px] font-black uppercase text-slate-400 tracking-widest">
-                    Category & Type
+                    Classification
                   </th>
                   <th className="px-4 py-5 text-[9px] font-black uppercase text-slate-400 tracking-widest text-center">
-                    Registry Status
+                    Pricing Range
+                  </th>
+                  <th className="px-4 py-5 text-[9px] font-black uppercase text-slate-400 tracking-widest text-center">
+                    Status
                   </th>
                   <th className="px-6 py-5 text-right text-[9px] font-black uppercase text-slate-400 tracking-widest">
                     Controls
@@ -313,7 +339,7 @@ export default function CompactServicesPage() {
                 {services.map((item) => (
                   <tr
                     key={item.id}
-                    className={`group transition-all ${
+                    className={`group ${
                       selectedSet.has(item.id)
                         ? "bg-indigo-50/40"
                         : "hover:bg-slate-50/50"
@@ -322,7 +348,7 @@ export default function CompactServicesPage() {
                     <td className="px-6 py-4 text-center">
                       <input
                         type="checkbox"
-                        className="w-4 h-4 rounded border-slate-300 text-indigo-600 cursor-pointer"
+                        className="w-4 h-4 rounded border-slate-300 text-indigo-600"
                         checked={selectedSet.has(item.id)}
                         onChange={() => toggleSelectOne(item.id)}
                       />
@@ -340,7 +366,7 @@ export default function CompactServicesPage() {
                             />
                           ) : (
                             <ImageIcon
-                              className="m-auto text-slate-200"
+                              className="m-auto mt-3 text-slate-200"
                               size={18}
                             />
                           )}
@@ -356,23 +382,31 @@ export default function CompactServicesPage() {
                       </div>
                     </td>
                     <td className="px-4 py-4">
-                      <div className="flex flex-col gap-1.5">
+                      <div className="space-y-1.5">
                         <div className="flex items-center gap-2">
                           <img
                             src={item.category?.icon}
-                            className="w-4 h-4 object-contain"
+                            className="w-3.5 h-3.5 object-contain"
                             alt=""
                           />
-                          <span className="text-[10px] font-black text-slate-700 uppercase tracking-tight">
+                          <span className="text-[10px] font-black text-slate-700 uppercase">
                             {item.category?.name}
                           </span>
                         </div>
-                        <div className="flex items-center gap-2">
-                          <div className="w-1.5 h-1.5 rounded-full bg-indigo-400" />
-                          <span className="text-[9px] font-bold text-slate-400 uppercase tracking-widest">
-                            {item.type?.name}
-                          </span>
+                        <div className="flex items-center gap-1.5 text-[9px] font-bold text-slate-400 uppercase tracking-widest">
+                          <Tag size={10} className="text-indigo-400" />{" "}
+                          {item.type?.name}
                         </div>
+                      </div>
+                    </td>
+                    <td className="px-4 py-4 text-center">
+                      <div className="flex flex-col">
+                        <span className="text-[11px] font-black text-slate-900">
+                          {getPriceDisplay(item.service_packages)}
+                        </span>
+                        <span className="text-[9px] font-bold text-slate-400 uppercase tracking-tighter">
+                          {item.packages_count} Packages
+                        </span>
                       </div>
                     </td>
                     <td className="px-4 py-4 text-center">
@@ -380,36 +414,28 @@ export default function CompactServicesPage() {
                     </td>
                     <td className="px-6 py-4 text-right">
                       <div className="flex justify-end gap-1.5 opacity-0 group-hover:opacity-100 transition-all">
-                        {/* VIEW ACTION */}
                         <button
                           onClick={() =>
                             router.push(`/owner/services/${item.id}`)
                           }
                           className="p-2 text-slate-400 hover:text-emerald-600 hover:bg-emerald-50 rounded-xl border border-transparent hover:border-emerald-100 shadow-sm transition-all"
-                          title="View Details"
                         >
                           <Eye size={16} />
                         </button>
-
-                        {/* EDIT ACTION */}
                         <button
                           onClick={() =>
                             router.push(`/owner/edit/services/${item.id}`)
                           }
                           className="p-2 text-slate-400 hover:text-indigo-600 hover:bg-indigo-50 rounded-xl border border-transparent hover:border-indigo-100 shadow-sm transition-all"
-                          title="Edit Service"
                         >
                           <Pencil size={16} />
                         </button>
-
-                        {/* DELETE ACTION */}
                         <button
                           onClick={() => {
                             setIdsToDelete([item.id]);
                             setDeleteOpen(true);
                           }}
                           className="p-2 text-slate-400 hover:text-rose-600 hover:bg-rose-50 rounded-xl border border-transparent hover:border-rose-100 shadow-sm transition-all"
-                          title="Remove Service"
                         >
                           <Trash2 size={16} />
                         </button>
@@ -421,10 +447,10 @@ export default function CompactServicesPage() {
             </table>
           </div>
 
-          {/* PAGINATION FOOTER */}
+          {/* FOOTER */}
           <div className="px-8 py-5 bg-slate-50/50 border-t border-slate-100 flex items-center justify-between">
             <span className="text-slate-500 text-[11px] font-black uppercase tracking-widest">
-              Total Records:{" "}
+              Catalog Items:{" "}
               <span className="text-indigo-600">{meta?.total || 0}</span>
             </span>
             <div className="flex items-center gap-3">
@@ -451,34 +477,33 @@ export default function CompactServicesPage() {
           </div>
         </div>
 
-        {/* FLOATING BULK ACTIONS */}
+        {/* FLOATING ACTION DOCK */}
         <AnimatePresence>
           {selectedIds.length > 0 && (
             <motion.div
               initial={{ y: 50, x: "-50%", opacity: 0 }}
               animate={{ y: 0, x: "-50%", opacity: 1 }}
               exit={{ y: 50, x: "-50%", opacity: 0 }}
-              className="fixed bottom-8 left-1/2 z-50 px-8 py-4 bg-slate-900 text-white rounded-3xl shadow-2xl flex items-center gap-8 border border-slate-700/50 backdrop-blur-xl"
+              className="fixed bottom-8 left-1/2 z-50 px-8 py-4 bg-slate-900 text-white rounded-3xl shadow-2xl flex items-center gap-8 border border-white/10 backdrop-blur-xl"
             >
               <div className="flex items-center gap-3 pr-8 border-r border-slate-700">
                 <span className="w-6 h-6 bg-indigo-600 rounded-full flex items-center justify-center text-[10px] font-black">
                   {selectedIds.length}
                 </span>
                 <span className="text-[10px] font-black uppercase tracking-[0.2em]">
-                  Items Selected
+                  Selected
                 </span>
               </div>
-
               <div className="flex gap-8">
                 <button
                   onClick={() => handleBulkStatusUpdate("active")}
-                  className="text-[10px] font-black uppercase tracking-widest hover:text-emerald-400 flex items-center gap-2 transition-colors"
+                  className="text-[10px] font-black uppercase hover:text-emerald-400 flex items-center gap-2 transition-colors"
                 >
                   <CheckCircle2 size={16} /> ACTIVATE
                 </button>
                 <button
                   onClick={() => handleBulkStatusUpdate("paused")}
-                  className="text-[10px] font-black uppercase tracking-widest hover:text-amber-400 flex items-center gap-2 transition-colors"
+                  className="text-[10px] font-black uppercase hover:text-amber-400 flex items-center gap-2 transition-colors"
                 >
                   <PauseCircle size={16} /> PAUSE
                 </button>
@@ -487,14 +512,13 @@ export default function CompactServicesPage() {
                     setIdsToDelete(selectedIds);
                     setDeleteOpen(true);
                   }}
-                  className="text-[10px] font-black uppercase tracking-widest hover:text-rose-400 flex items-center gap-2 transition-colors"
+                  className="text-[10px] font-black uppercase hover:text-rose-400 flex items-center gap-2 transition-colors"
                 >
                   <Trash2 size={16} /> DELETE
                 </button>
               </div>
-
               <button
-                className="p-2 hover:bg-slate-800 rounded-full transition-colors"
+                className="p-2 hover:bg-slate-800 rounded-full"
                 onClick={() => setSelectedSet(new Set())}
               >
                 <X size={16} className="text-slate-500" />
@@ -504,7 +528,6 @@ export default function CompactServicesPage() {
         </AnimatePresence>
       </div>
 
-      {/* DELETE MODAL */}
       <DeleteConfirmModal
         isOpen={deleteOpen}
         onClose={() => setDeleteOpen(false)}
@@ -516,8 +539,7 @@ export default function CompactServicesPage() {
   );
 }
 
-// SHARED STATUS BADGE COMPONENT
-function StatusBadge({ status, mini = false }) {
+function StatusBadge({ status }) {
   const configs = {
     active: {
       label: "Active",
@@ -539,18 +561,6 @@ function StatusBadge({ status, mini = false }) {
     },
   };
   const config = configs[status] || configs.draft;
-
-  if (mini) {
-    return (
-      <div className="flex items-center gap-1.5">
-        <span className={`w-1.5 h-1.5 rounded-full ${config.dot}`} />
-        <span className="text-[8px] font-black text-slate-400 uppercase tracking-tighter">
-          {config.label}
-        </span>
-      </div>
-    );
-  }
-
   return (
     <span
       className={`inline-flex items-center gap-2 px-3.5 py-1.5 rounded-xl text-[9px] font-black uppercase tracking-widest border shadow-sm transition-all ${config.styles}`}
