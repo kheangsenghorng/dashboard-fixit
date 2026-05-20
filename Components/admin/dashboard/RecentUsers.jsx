@@ -1,23 +1,34 @@
 "use client";
 
 import React, { useEffect } from "react";
-import { CreditCard, Clock, CheckCircle2, AlertCircle } from "lucide-react";
+import {
+  CreditCard,
+  Clock,
+  CheckCircle2,
+  AlertCircle,
+  XCircle,
+} from "lucide-react";
 import useAdminPaymentSplitStore from "../../../app/store/payouts/useAdminPaymentSplitStore";
 
 const formatMoney = (value) => {
-  const amount = Number(value || 0);
-
+  const amount = Number(value ?? 0);
   return `$${amount.toFixed(2)}`;
 };
 
 const formatDateTime = (date) => {
   if (!date) return "N/A";
 
-  return new Date(date).toLocaleString();
+  const parsedDate = new Date(date);
+
+  if (Number.isNaN(parsedDate.getTime())) {
+    return "N/A";
+  }
+
+  return parsedDate.toLocaleString();
 };
 
-const getStatusStyle = (status) => {
-  switch (status) {
+const getStatusStyle = (status = "") => {
+  switch (status.toLowerCase()) {
     case "paid":
     case "completed":
       return "bg-green-50 text-green-600 border-green-100";
@@ -25,8 +36,9 @@ const getStatusStyle = (status) => {
     case "pending":
       return "bg-amber-50 text-amber-600 border-amber-100";
 
-    case "failed":
+    case "cancelled":
     case "rejected":
+    case "failed":
       return "bg-red-50 text-red-600 border-red-100";
 
     default:
@@ -34,15 +46,29 @@ const getStatusStyle = (status) => {
   }
 };
 
-const getStatusIcon = (status) => {
-  if (status === "pending") return <Clock size={14} />;
-  if (status === "paid" || status === "completed")
+const getStatusIcon = (status = "") => {
+  const normalizedStatus = status.toLowerCase();
+
+  if (normalizedStatus === "pending") {
+    return <Clock size={14} />;
+  }
+
+  if (normalizedStatus === "paid" || normalizedStatus === "completed") {
     return <CheckCircle2 size={14} />;
+  }
+
+  if (
+    normalizedStatus === "cancelled" ||
+    normalizedStatus === "rejected" ||
+    normalizedStatus === "failed"
+  ) {
+    return <XCircle size={14} />;
+  }
 
   return <AlertCircle size={14} />;
 };
 
-const RecentUsers = () => {
+const RecentPaymentSplits = () => {
   const { paymentSplits, loading, error, fetchPaymentSplits } =
     useAdminPaymentSplitStore();
 
@@ -50,7 +76,13 @@ const RecentUsers = () => {
     fetchPaymentSplits();
   }, [fetchPaymentSplits]);
 
-  const rows = Array.isArray(paymentSplits) ? paymentSplits.slice(0, 5) : [];
+  const rows = Array.isArray(paymentSplits)
+    ? [...paymentSplits]
+        .sort(
+          (a, b) => new Date(b.created_at || 0) - new Date(a.created_at || 0)
+        )
+        .slice(0, 5)
+    : [];
 
   return (
     <div className="bg-white rounded-[2rem] shadow-sm border border-slate-100 overflow-hidden">
@@ -59,7 +91,10 @@ const RecentUsers = () => {
           Payment Split Activity
         </h3>
 
-        <button className="text-sm font-bold text-indigo-600 hover:underline transition-all">
+        <button
+          type="button"
+          className="text-sm font-bold text-indigo-600 hover:underline transition-all"
+        >
           View All
         </button>
       </div>
@@ -107,12 +142,24 @@ const RecentUsers = () => {
               </tr>
             ) : (
               rows.map((split) => {
-                const payoutStatus = split.owner_payout?.status || "pending";
-                const ownerName = split.owner?.business_name || "Unknown Owner";
+                const payout = split.owner_payout;
+                const payoutStatus = payout?.status || "pending";
+
+                const ownerName =
+                  split.owner?.business_name ||
+                  split.owner?.name ||
+                  split.owner?.email ||
+                  "Unknown Owner";
+
+                const payoutAmount =
+                  payout?.amount ??
+                  split.owner_payout_amount ??
+                  split.owner_payout ??
+                  0;
 
                 return (
                   <tr
-                    key={split.id}
+                    key={split.id || `${split.payment_id}-${split.owner_id}`}
                     className="hover:bg-slate-50/50 transition-all group"
                   >
                     <td className="px-6 py-5">
@@ -126,7 +173,7 @@ const RecentUsers = () => {
                             {ownerName}
                           </p>
                           <p className="text-[10px] text-slate-400 font-bold">
-                            Payment #{split.payment_id}
+                            Payment #{split.payment_id || "N/A"}
                           </p>
                         </div>
                       </div>
@@ -141,7 +188,7 @@ const RecentUsers = () => {
                     </td>
 
                     <td className="px-6 py-5 text-emerald-600 text-xs font-black">
-                      {formatMoney(split.owner_payout?.amount)}
+                      {formatMoney(payoutAmount)}
                     </td>
 
                     <td className="px-6 py-5">
@@ -169,4 +216,4 @@ const RecentUsers = () => {
   );
 };
 
-export default RecentUsers;
+export default RecentPaymentSplits;

@@ -20,7 +20,24 @@ export const serviceBookingService = {
     api.post("/service-bookings", data, {
       headers: { Accept: "application/json" },
     }),
+  cancelRefundBooking: (bookingId, payload) =>
+    api.post(
+      `/owner/service-bookings/${bookingId}/owner-cancel-refund`,
+      payload
+    ),
 
+  //display by admin all refunded
+  getRefundByadmin: (params = {}) =>
+    api.get("/service-bookings/refunded-cancelled", {
+      params,
+    }),
+  //display refunded-cancelled by owner
+  // serviceBookingService.js
+
+  getRefundedCancelled: (ownerId, params = {}) =>
+    api.get(`/owner/service-bookings/${ownerId}/refunded-cancelled`, {
+      params,
+    }),
   // Update service booking
   update: (id, data) =>
     api.put(`/service-bookings/${id}`, data, {
