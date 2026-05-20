@@ -208,7 +208,7 @@ export default function VerifyOtpPage() {
             <div className="mb-4">
               <Link href="/" className="block">
                 <span className="text-2xl font-black text-slate-900 tracking-tighter uppercase leading-none">
-                  Saby-Tinh
+                 FixIT
                 </span>
               </Link>
             </div>
