@@ -1,6 +1,12 @@
 "use client";
 
-import React, { useEffect, useMemo, useState, useCallback } from "react";
+import React, {
+  useEffect,
+  useMemo,
+  useState,
+  useCallback,
+  useRef,
+} from "react";
 import {
   Plus,
   Trash2,
@@ -13,6 +19,8 @@ import {
   Image as ImageIcon,
   Save,
   RefreshCw,
+  Recycle,
+  Unlink,
 } from "lucide-react";
 import { motion, AnimatePresence } from "framer-motion";
 import Image from "next/image";
@@ -23,14 +31,14 @@ import { useServicePackageStore } from "../../../../app/store/services/useServic
 import { usePackageIncludedItemStore } from "../../../../app/store/services/usePackageIncludedItemStore";
 import { useIncludedItemStore } from "../../../../app/store/services/useIncludedItemStore";
 
-const InventorySkeleton = () => {
-  return (
-    <div className="max-w-6xl mx-auto space-y-8">
-      <div className="h-32 w-full bg-slate-100 animate-pulse rounded-3xl" />
-      <div className="h-72 w-full bg-white border border-slate-100 rounded-3xl p-8" />
-    </div>
-  );
-};
+const AUTO_REFRESH_MS = 30000;
+
+const InventorySkeleton = () => (
+  <div className="max-w-6xl mx-auto space-y-8">
+    <div className="h-32 w-full bg-slate-100 animate-pulse rounded-3xl" />
+    <div className="h-72 w-full bg-white border border-slate-100 rounded-3xl p-8" />
+  </div>
+);
 
 const createEmptyItem = (serviceId, sortOrder) => ({
   id: null,
@@ -46,8 +54,8 @@ const createEmptyItem = (serviceId, sortOrder) => ({
 
 const getItemKey = (item, index) => item.id || `temp-${index}`;
 
-const normalizeItems = (items = [], serviceId) => {
-  return items.map((item, index) => ({
+const normalizeItems = (items = [], serviceId) =>
+  items.map((item, index) => ({
     ...item,
     id: item.id || null,
     service_id: item.service_id || serviceId,
@@ -55,11 +63,10 @@ const normalizeItems = (items = [], serviceId) => {
     description: item.description || "",
     image_url: item.image_url || null,
     status: item.status || "active",
-    sort_order: item.sort_order || index + 1,
+    sort_order: item.sort_order || item.pivot?.sort_order || index + 1,
     preview: null,
     image: null,
   }));
-};
 
 const buildIncludedItemPayload = ({ item, serviceId, index }) => {
   const payload = new FormData();
@@ -94,20 +101,29 @@ export default function Step4Inventory({
   } = useServicePackageStore();
 
   const {
+    includedItems: allIncludedItems = [],
     create: createIncludedItem,
     update: updateIncludedItem,
     remove: removeIncludedItem,
+    getByServiceId: getIncludedItemsByServiceId,
   } = useIncludedItemStore();
 
   const {
     create: attachIncludedItemToPackage,
+    detach: detachIncludedItemFromPackage,
     loading: packageIncludedItemLoading,
   } = usePackageIncludedItemStore();
 
+  const isMountedRef = useRef(true);
+
   const [savingItemKey, setSavingItemKey] = useState(null);
+  const [removingItemKey, setRemovingItemKey] = useState(null);
   const [deletingItemKey, setDeletingItemKey] = useState(null);
+  const [addingExistingKey, setAddingExistingKey] = useState(null);
   const [refreshing, setRefreshing] = useState(false);
+  const [silentRefreshing, setSilentRefreshing] = useState(false);
   const [searchTerm, setSearchTerm] = useState("");
+  const [existingSearchTerm, setExistingSearchTerm] = useState("");
   const [statusFilter, setStatusFilter] = useState("all");
 
   const includedItems = Array.isArray(formData.included_items)
@@ -138,57 +154,92 @@ export default function Step4Inventory({
   );
 
   const refreshInventoryStore = useCallback(
-    async (packageId = formData.package_id) => {
+    async (packageId = formData.package_id, options = {}) => {
       if (!serviceId) return null;
 
-      setRefreshing(true);
+      const silent = options.silent === true;
+
+      if (silent) {
+        setSilentRefreshing(true);
+      } else {
+        setRefreshing(true);
+      }
 
       try {
-        const res = await getByServiceIdInventory(serviceId);
-        const freshPackages = res?.data || [];
+        const [packageRes] = await Promise.all([
+          getByServiceIdInventory(serviceId),
+          getIncludedItemsByServiceId
+            ? getIncludedItemsByServiceId(serviceId)
+            : Promise.resolve(null),
+        ]);
 
+        const freshPackages = packageRes?.data || [];
         const activePkg =
           freshPackages.find((pkg) => Number(pkg.id) === Number(packageId)) ||
           freshPackages[0];
 
-        if (activePkg) {
+        if (activePkg && isMountedRef.current) {
           setActivePackageToForm(activePkg);
         }
 
         return activePkg || null;
       } finally {
-        setRefreshing(false);
+        if (isMountedRef.current) {
+          setRefreshing(false);
+          setSilentRefreshing(false);
+        }
       }
     },
     [
       serviceId,
       formData.package_id,
       getByServiceIdInventory,
+      getIncludedItemsByServiceId,
       setActivePackageToForm,
     ]
   );
+
+  useEffect(() => {
+    isMountedRef.current = true;
+
+    return () => {
+      isMountedRef.current = false;
+    };
+  }, []);
 
   useEffect(() => {
     refreshInventoryStore();
   }, [refreshInventoryStore]);
 
   useEffect(() => {
-    if (!packageData.length || formData.package_id) return;
+    if (!serviceId) return;
 
+    const interval = setInterval(() => {
+      refreshInventoryStore(formData.package_id, { silent: true });
+    }, AUTO_REFRESH_MS);
+
+    return () => clearInterval(interval);
+  }, [serviceId, formData.package_id, refreshInventoryStore]);
+
+  useEffect(() => {
+    if (!packageData.length || formData.package_id) return;
     setActivePackageToForm(packageData[0]);
   }, [packageData, formData.package_id, setActivePackageToForm]);
 
-  const switchPackage = (pkgId) => {
-    const selectedPackage = packageData.find(
-      (pkg) => Number(pkg.id) === Number(pkgId)
-    );
+  const switchPackage = useCallback(
+    (pkgId) => {
+      const selectedPackage = packageData.find(
+        (pkg) => Number(pkg.id) === Number(pkgId)
+      );
 
-    if (!selectedPackage) return;
+      if (!selectedPackage) return;
 
-    setActivePackageToForm(selectedPackage);
-    setSearchTerm("");
-    setStatusFilter("all");
-  };
+      setActivePackageToForm(selectedPackage);
+      setSearchTerm("");
+      setStatusFilter("all");
+    },
+    [packageData, setActivePackageToForm]
+  );
 
   const filteredItems = useMemo(() => {
     const keyword = searchTerm.trim().toLowerCase();
@@ -207,6 +258,27 @@ export default function Step4Inventory({
         return matchesSearch && matchesStatus;
       });
   }, [includedItems, searchTerm, statusFilter]);
+
+  const existingItemsNotInPackage = useMemo(() => {
+    const currentIds = new Set(includedItems.map((item) => Number(item.id)));
+    const keyword = existingSearchTerm.trim().toLowerCase();
+
+    return allIncludedItems.filter((item) => {
+      const isValid =
+        item.id &&
+        !currentIds.has(Number(item.id)) &&
+        Number(item.service_id) === Number(serviceId);
+
+      if (!isValid) return false;
+
+      if (!keyword) return true;
+
+      return (
+        item.name?.toLowerCase().includes(keyword) ||
+        item.description?.toLowerCase().includes(keyword)
+      );
+    });
+  }, [allIncludedItems, includedItems, serviceId, existingSearchTerm]);
 
   const addItem = () => {
     if (!formData.package_id) {
@@ -244,6 +316,10 @@ export default function Step4Inventory({
 
     setFormData((prev) => {
       const newItems = [...(prev.included_items || [])];
+
+      if (newItems[index]?.preview) {
+        URL.revokeObjectURL(newItems[index].preview);
+      }
 
       newItems[index] = {
         ...newItems[index],
@@ -287,7 +363,7 @@ export default function Step4Inventory({
 
       const newItemId = item.id || res?.data?.id || res?.id;
 
-      if (!item.id && newItemId) {
+      if (newItemId && !item.id) {
         await attachIncludedItemToPackage({
           package_id: Number(formData.package_id),
           included_item_id: Number(newItemId),
@@ -295,7 +371,7 @@ export default function Step4Inventory({
         });
       }
 
-      toast.success(item.id ? "Item updated" : "Item created");
+      toast.success(item.id ? "Item updated" : "Item created and added");
       await refreshInventoryStore(formData.package_id);
     } catch (error) {
       toast.error("Failed to save item");
@@ -304,7 +380,60 @@ export default function Step4Inventory({
     }
   };
 
-  const handleRemoveItem = async (item, index) => {
+  const addExistingItemToPackage = async (item) => {
+    if (!formData.package_id) {
+      toast.error("Please select a package first");
+      return;
+    }
+
+    setAddingExistingKey(item.id);
+
+    try {
+      const res = await attachIncludedItemToPackage({
+        package_id: Number(formData.package_id),
+        included_item_id: Number(item.id),
+        sort_order: includedItems.length + 1,
+      });
+
+      if (!res) return;
+
+      toast.success("Item added to package");
+      await refreshInventoryStore(formData.package_id);
+    } catch (error) {
+      toast.error("Cannot add item to package");
+    } finally {
+      setAddingExistingKey(null);
+    }
+  };
+
+  const handleRemoveFromPackage = async (item) => {
+    if (!item.id || !formData.package_id) return;
+
+    if (!detachIncludedItemFromPackage) {
+      toast.error("Detach API/store function is missing");
+      return;
+    }
+
+    setRemovingItemKey(item.id);
+
+    try {
+      const res = await detachIncludedItemFromPackage({
+        package_id: Number(formData.package_id),
+        included_item_id: Number(item.id),
+      });
+
+      if (!res) return;
+
+      toast.success("Item removed from this package");
+      await refreshInventoryStore(formData.package_id);
+    } catch (error) {
+      toast.error("Failed to remove item from package");
+    } finally {
+      setRemovingItemKey(null);
+    }
+  };
+
+  const handleDeleteForever = async (item, index) => {
     if (!item.id) {
       setFormData((prev) => ({
         ...prev,
@@ -316,6 +445,12 @@ export default function Step4Inventory({
       return;
     }
 
+    const confirmDelete = window.confirm(
+      "Delete this item forever? It will be removed from all packages."
+    );
+
+    if (!confirmDelete) return;
+
     setDeletingItemKey(item.id);
 
     try {
@@ -323,7 +458,7 @@ export default function Step4Inventory({
 
       if (!res) return;
 
-      toast.success("Item deleted");
+      toast.success("Item deleted forever");
       await refreshInventoryStore(formData.package_id);
     } catch (error) {
       toast.error("Failed to delete item");
@@ -342,7 +477,6 @@ export default function Step4Inventory({
       animate={{ opacity: 1, y: 0 }}
       className="max-w-6xl mx-auto space-y-10 pb-24 px-4"
     >
-      {/* Package Selector */}
       <div className="space-y-6">
         <div className="flex items-center justify-between gap-4 ml-2">
           <div className="flex items-center gap-3">
@@ -359,8 +493,11 @@ export default function Step4Inventory({
             disabled={refreshing}
             className="flex items-center gap-2 px-4 py-2 rounded-2xl bg-white border border-slate-100 text-xs font-black uppercase tracking-widest text-slate-500 hover:text-indigo-600 hover:border-indigo-200 transition-all disabled:opacity-50"
           >
-            <RefreshCw size={15} className={refreshing ? "animate-spin" : ""} />
-            Refresh
+            <RefreshCw
+              size={15}
+              className={refreshing || silentRefreshing ? "animate-spin" : ""}
+            />
+            {silentRefreshing ? "Auto" : "Refresh"}
           </button>
         </div>
 
@@ -400,7 +537,7 @@ export default function Step4Inventory({
                         isActive ? "text-slate-900" : "text-slate-500"
                       }`}
                     >
-                      {pkg.title}
+                      {pkg.title || pkg.name || `Package #${pkg.id}`}
                     </h4>
 
                     <span className="text-[11px] font-black text-indigo-500 uppercase tracking-tighter">
@@ -424,16 +561,15 @@ export default function Step4Inventory({
         )}
       </div>
 
-      {/* Header + Filters */}
       <div className="bg-slate-900 rounded-[3rem] p-8 shadow-2xl flex flex-col lg:flex-row justify-between items-center gap-8">
         <div>
           <h2 className="text-2xl font-black text-white tracking-tight">
-            {activePackage?.title || "Package"}{" "}
+            {activePackage?.title || activePackage?.name || "Package"}{" "}
             <span className="text-indigo-400">Inventory</span>
           </h2>
 
           <p className="text-slate-400 text-xs font-bold uppercase tracking-widest mt-2">
-            Showing {filteredItems.length} items
+            Showing {filteredItems.length} items in selected package
           </p>
         </div>
 
@@ -476,12 +612,11 @@ export default function Step4Inventory({
             className="w-full sm:w-auto bg-indigo-500 disabled:bg-slate-600 disabled:text-slate-400 hover:bg-indigo-400 text-white px-6 py-3 rounded-2xl font-black text-sm transition-all flex items-center justify-center gap-2"
           >
             <Plus size={20} />
-            New Item
+            Create New Item
           </button>
         </div>
       </div>
 
-      {/* Error */}
       {error && (
         <div className="bg-red-50 p-6 rounded-[2rem] border border-red-100 flex items-start justify-between gap-4">
           <div className="flex items-start gap-3">
@@ -506,12 +641,12 @@ export default function Step4Inventory({
         </div>
       )}
 
-      {/* Item List */}
       <div className="space-y-4">
         <AnimatePresence mode="popLayout">
           {filteredItems.map((item) => {
             const itemKey = getItemKey(item, item.originalIndex);
             const isSaving = savingItemKey === itemKey;
+            const isRemoving = removingItemKey === item.id;
             const isDeleting = deletingItemKey === item.id;
 
             return (
@@ -575,7 +710,7 @@ export default function Step4Inventory({
                   </div>
                 </div>
 
-                <div className="flex items-center gap-3">
+                <div className="flex flex-wrap items-center justify-end gap-3">
                   <select
                     value={item.status || "active"}
                     onChange={(event) =>
@@ -593,6 +728,7 @@ export default function Step4Inventory({
 
                   <button
                     type="button"
+                    title="Save item"
                     onClick={() => handleSaveItem(item, item.originalIndex)}
                     disabled={
                       isSaving ||
@@ -610,7 +746,24 @@ export default function Step4Inventory({
 
                   <button
                     type="button"
-                    onClick={() => handleRemoveItem(item, item.originalIndex)}
+                    title="Remove from this package only"
+                    onClick={() => handleRemoveFromPackage(item)}
+                    disabled={isRemoving || packageIncludedItemLoading}
+                    className="p-3 bg-amber-50 text-amber-600 rounded-xl hover:bg-amber-600 hover:text-white transition-all disabled:opacity-50"
+                  >
+                    {isRemoving ? (
+                      <Loader2 size={18} className="animate-spin" />
+                    ) : (
+                      <Unlink size={18} />
+                    )}
+                  </button>
+
+                  <button
+                    type="button"
+                    title="Delete forever"
+                    onClick={() =>
+                      handleDeleteForever(item, item.originalIndex)
+                    }
                     disabled={isDeleting}
                     className="p-3 bg-rose-50 text-rose-600 rounded-xl hover:bg-rose-600 hover:text-white transition-all disabled:opacity-50"
                   >
@@ -646,6 +799,100 @@ export default function Step4Inventory({
                 Add First Item
               </button>
             )}
+          </div>
+        )}
+      </div>
+
+      <div className="space-y-6">
+        <div className="flex flex-col md:flex-row md:items-center md:justify-between gap-4 ml-2">
+          <div className="flex items-center gap-3">
+            <div className="h-6 w-1 bg-emerald-600 rounded-full" />
+
+            <h3 className="text-sm font-black uppercase tracking-widest text-slate-500">
+              Existing Items - Use Again
+            </h3>
+          </div>
+
+          <div className="relative w-full md:w-80">
+            <Search
+              className="absolute left-4 top-1/2 -translate-y-1/2 text-slate-400"
+              size={16}
+            />
+
+            <input
+              type="text"
+              placeholder="Search existing items..."
+              className="w-full pl-11 pr-4 py-3 bg-white border border-slate-100 rounded-2xl text-slate-700 text-sm outline-none focus:border-emerald-400"
+              value={existingSearchTerm}
+              onChange={(event) => setExistingSearchTerm(event.target.value)}
+            />
+          </div>
+        </div>
+
+        {existingItemsNotInPackage.length === 0 ? (
+          <div className="bg-slate-50 border border-slate-100 rounded-3xl p-6 text-slate-400 text-sm font-bold">
+            No existing items available to add.
+          </div>
+        ) : (
+          <div className="grid grid-cols-1 md:grid-cols-2 gap-5">
+            {existingItemsNotInPackage.map((item) => {
+              const isAdding = addingExistingKey === item.id;
+
+              return (
+                <div
+                  key={item.id}
+                  className="bg-white border border-slate-100 rounded-3xl p-6 shadow-lg shadow-slate-100 flex items-center gap-5"
+                >
+                  <div className="relative w-20 h-20 bg-slate-50 rounded-2xl overflow-hidden border border-slate-100 shrink-0">
+                    {item.image_url ? (
+                      <Image
+                        src={item.image_url}
+                        fill
+                        className="object-cover"
+                        alt={item.name || "item"}
+                        unoptimized
+                      />
+                    ) : (
+                      <div className="w-full h-full flex items-center justify-center">
+                        <ImageIcon size={24} className="text-slate-300" />
+                      </div>
+                    )}
+                  </div>
+
+                  <div className="flex-1 min-w-0">
+                    <h4 className="font-black text-slate-800 text-lg truncate">
+                      {item.name}
+                    </h4>
+
+                    <p className="text-sm text-slate-400 mt-1 line-clamp-2">
+                      {item.description || "No description"}
+                    </p>
+
+                    <p className="text-[10px] font-black text-slate-400 uppercase mt-2">
+                      Status: {item.status || "active"}
+                    </p>
+                  </div>
+
+                  <button
+                    type="button"
+                    onClick={() => addExistingItemToPackage(item)}
+                    disabled={
+                      !formData.package_id ||
+                      packageIncludedItemLoading ||
+                      isAdding
+                    }
+                    className="shrink-0 px-4 py-2 rounded-xl bg-emerald-600 hover:bg-emerald-700 disabled:bg-slate-400 text-white text-xs font-black uppercase flex items-center gap-2"
+                  >
+                    {isAdding ? (
+                      <Loader2 size={14} className="animate-spin" />
+                    ) : (
+                      <Recycle size={14} />
+                    )}
+                    Use Again
+                  </button>
+                </div>
+              );
+            })}
           </div>
         )}
       </div>

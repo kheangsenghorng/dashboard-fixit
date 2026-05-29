@@ -1,8 +1,9 @@
 "use client";
 
-import React, { useEffect, useState } from "react";
+import React, { useEffect, useMemo, useRef, useState } from "react";
 import {
   ArrowLeft,
+  ArrowUp,
   MapPin,
   Clock,
   Users,
@@ -22,6 +23,9 @@ import { useParams, useRouter } from "next/navigation";
 import { useServiceStoreCompany } from "../../../app/store/owner/useServiceStore";
 import ContentLoader from "../../ContentLoader";
 
+const WORKFLOW_PREVIEW_LIMIT = 2;
+const TOOLKIT_PREVIEW_LIMIT = 2;
+
 export default function ServiceDetailPage() {
   const params = useParams();
   const serviceId = params?.id;
@@ -30,11 +34,28 @@ export default function ServiceDetailPage() {
   const { fetchOneService, service, loading, error } = useServiceStoreCompany();
 
   const [activePkgIdx, setActivePkgIdx] = useState(0);
+  const [showFullWorkflow, setShowFullWorkflow] = useState(false);
+  const [showFullToolkit, setShowFullToolkit] = useState(false);
+  const [showBackToTop, setShowBackToTop] = useState(false);
+
+  const workflowRef = useRef(null);
+  const toolkitRef = useRef(null);
+
+  const scrollToTop = () => {
+    window.scrollTo({ top: 0, behavior: "smooth" });
+  };
+
+  const scrollToSection = (ref) => {
+    setTimeout(() => {
+      ref.current?.scrollIntoView({
+        behavior: "smooth",
+        block: "start",
+      });
+    }, 80);
+  };
 
   useEffect(() => {
-    if (serviceId) {
-      fetchOneService(serviceId);
-    }
+    if (serviceId) fetchOneService(serviceId);
   }, [serviceId, fetchOneService]);
 
   const data = service?.data || service || {};
@@ -42,10 +63,45 @@ export default function ServiceDetailPage() {
   const currentPkg = packages[activePkgIdx] || null;
 
   useEffect(() => {
-    if (activePkgIdx >= packages.length) {
-      setActivePkgIdx(0);
-    }
+    if (activePkgIdx >= packages.length) setActivePkgIdx(0);
   }, [packages.length, activePkgIdx]);
+
+  useEffect(() => {
+    setShowFullWorkflow(false);
+    setShowFullToolkit(false);
+  }, [activePkgIdx]);
+
+  useEffect(() => {
+    const handleScroll = () => {
+      setShowBackToTop(window.scrollY > 500);
+    };
+
+    handleScroll();
+    window.addEventListener("scroll", handleScroll);
+    return () => window.removeEventListener("scroll", handleScroll);
+  }, []);
+
+  const mainImage =
+    data.images?.[0]?.url ||
+    data.images?.[0]?.image_url ||
+    "/placeholder-image.png";
+
+  const ownerLogo =
+    data.owner?.logo || data.owner?.logo_url || "/placeholder-image.png";
+
+  const workflowGroups = currentPkg?.task_groups || [];
+
+  const totalWorkflowTasks = useMemo(() => {
+    return workflowGroups.reduce((total, group) => {
+      return total + (group.task_items || group.items || []).length;
+    }, 0);
+  }, [workflowGroups]);
+
+  const toolkitItems = currentPkg?.included_items || [];
+
+  const visibleToolkitItems = showFullToolkit
+    ? toolkitItems
+    : toolkitItems.slice(0, TOOLKIT_PREVIEW_LIMIT);
 
   if (loading) {
     return (
@@ -97,14 +153,6 @@ export default function ServiceDetailPage() {
     );
   }
 
-  const mainImage =
-    data.images?.[0]?.url ||
-    data.images?.[0]?.image_url ||
-    "/placeholder-image.png";
-
-  const ownerLogo =
-    data.owner?.logo || data.owner?.logo_url || "/placeholder-image.png";
-
   return (
     <div className="min-h-screen bg-[#F1F5F9] text-slate-900 font-sans selection:bg-indigo-100 pb-20">
       <div className="fixed inset-0 overflow-hidden pointer-events-none">
@@ -150,7 +198,6 @@ export default function ServiceDetailPage() {
                 alt={data.title || "Service"}
                 unoptimized
               />
-
               <div className="absolute inset-0 bg-gradient-to-t from-black/40 to-transparent" />
             </div>
 
@@ -324,94 +371,204 @@ export default function ServiceDetailPage() {
                 <div className="absolute -bottom-10 -right-10 w-40 h-40 bg-indigo-50 rounded-full blur-3xl opacity-50" />
               </div>
 
-              <div className="lg:col-span-5 bg-white rounded-[2.5rem] p-10 shadow-sm border border-slate-100 flex flex-col">
-                <div className="flex items-center gap-3 mb-8">
-                  <div className="p-2.5 bg-emerald-50 text-emerald-600 rounded-xl">
-                    <ListTodo size={20} />
+              <div
+                ref={workflowRef}
+                className="lg:col-span-5 bg-white rounded-[2.5rem] p-10 shadow-sm border border-slate-100 flex flex-col scroll-mt-8"
+              >
+                <div className="flex items-center justify-between gap-3 mb-8">
+                  <div className="flex items-center gap-3">
+                    <div className="p-2.5 bg-emerald-50 text-emerald-600 rounded-xl">
+                      <ListTodo size={20} />
+                    </div>
+
+                    <h3 className="text-xl font-black tracking-tight">
+                      Execution{" "}
+                      <span className="text-indigo-600">Workflow</span>
+                    </h3>
                   </div>
 
-                  <h3 className="text-xl font-black tracking-tight">
-                    Execution <span className="text-indigo-600">Workflow</span>
-                  </h3>
+                  <span className="text-[10px] font-black uppercase tracking-widest text-slate-400">
+                    {totalWorkflowTasks} Tasks
+                  </span>
                 </div>
 
                 <div className="flex-1 space-y-6">
-                  {(currentPkg.task_groups || []).map((group) => (
-                    <div
-                      key={group.id}
-                      className="relative pl-8 border-l-2 border-slate-100 pb-2 last:pb-0 text-left"
-                    >
-                      <div className="absolute -left-[9px] top-0 w-4 h-4 bg-white border-2 border-indigo-600 rounded-full" />
+                  {workflowGroups.length === 0 ? (
+                    <EmptyState
+                      icon={ListTodo}
+                      title="No workflow added"
+                      text="This package does not have checklist tasks yet."
+                    />
+                  ) : (
+                    <>
+                      {(() => {
+                        let shownTasks = 0;
 
-                      <h4 className="text-[10px] font-black uppercase tracking-widest text-slate-400 mb-3">
-                        {group.name}
-                      </h4>
+                        return workflowGroups.map((group) => {
+                          const tasks = group.task_items || group.items || [];
 
-                      <div className="space-y-2">
-                        {(group.task_items || group.items || []).map((task) => (
-                          <div
-                            key={task.id}
-                            className="flex items-center justify-between p-3 bg-slate-50 rounded-xl group/task"
-                          >
-                            <span className="text-xs font-bold text-slate-700">
-                              {task.title}
-                            </span>
+                          const visibleTasks = showFullWorkflow
+                            ? tasks
+                            : tasks.filter(() => {
+                                if (shownTasks >= WORKFLOW_PREVIEW_LIMIT) {
+                                  return false;
+                                }
 
-                            <CheckCircle2
-                              size={14}
-                              className="text-emerald-500 opacity-0 group-hover/task:opacity-100 transition-opacity"
-                            />
-                          </div>
-                        ))}
-                      </div>
-                    </div>
-                  ))}
+                                shownTasks += 1;
+                                return true;
+                              });
+
+                          if (visibleTasks.length === 0) return null;
+
+                          return (
+                            <div
+                              key={group.id}
+                              className="relative pl-8 border-l-2 border-slate-100 pb-2 last:pb-0 text-left"
+                            >
+                              <div className="absolute -left-[9px] top-0 w-4 h-4 bg-white border-2 border-indigo-600 rounded-full" />
+
+                              <h4 className="text-[10px] font-black uppercase tracking-widest text-slate-400 mb-3">
+                                {group.name}
+                              </h4>
+
+                              {group.description && (
+                                <p className="text-[11px] font-bold text-slate-400 mb-3 leading-relaxed">
+                                  {group.description}
+                                </p>
+                              )}
+
+                              <div className="space-y-2">
+                                {visibleTasks.map((task) => (
+                                  <div
+                                    key={task.id}
+                                    className="flex items-center justify-between p-3 bg-slate-50 rounded-xl group/task"
+                                  >
+                                    <div>
+                                      <span className="text-xs font-bold text-slate-700">
+                                        {task.title}
+                                      </span>
+
+                                      {task.description && (
+                                        <p className="text-[10px] font-medium text-slate-400 mt-1 line-clamp-2">
+                                          {task.description}
+                                        </p>
+                                      )}
+                                    </div>
+
+                                    <CheckCircle2
+                                      size={14}
+                                      className="text-emerald-500 opacity-0 group-hover/task:opacity-100 transition-opacity shrink-0"
+                                    />
+                                  </div>
+                                ))}
+                              </div>
+                            </div>
+                          );
+                        });
+                      })()}
+
+                      {totalWorkflowTasks > WORKFLOW_PREVIEW_LIMIT && (
+                        <button
+                          type="button"
+                          onClick={() => {
+                            setShowFullWorkflow((prev) => !prev);
+                            scrollToSection(workflowRef);
+                          }}
+                          className="w-full mt-4 py-4 rounded-2xl bg-indigo-50 text-indigo-600 text-[10px] font-black uppercase tracking-widest hover:bg-indigo-600 hover:text-white transition-all"
+                        >
+                          {showFullWorkflow
+                            ? "Show Less"
+                            : `See More (${
+                                totalWorkflowTasks - WORKFLOW_PREVIEW_LIMIT
+                              } more)`}
+                        </button>
+                      )}
+                    </>
+                  )}
                 </div>
               </div>
 
               <div className="lg:col-span-3 space-y-6 text-left">
-                <div className="bg-white p-8 rounded-[2.5rem] shadow-sm border border-slate-100 h-full">
-                  <div className="flex items-center gap-3 mb-6">
-                    <div className="p-2.5 bg-amber-50 text-amber-600 rounded-xl">
-                      <Hammer size={20} />
+                <div
+                  ref={toolkitRef}
+                  className="bg-white p-8 rounded-[2.5rem] shadow-sm border border-slate-100 h-full scroll-mt-8"
+                >
+                  <div className="flex items-center justify-between gap-3 mb-6">
+                    <div className="flex items-center gap-3">
+                      <div className="p-2.5 bg-amber-50 text-amber-600 rounded-xl">
+                        <Hammer size={20} />
+                      </div>
+
+                      <h3 className="text-lg font-black tracking-tight text-slate-800">
+                        Toolkit
+                      </h3>
                     </div>
 
-                    <h3 className="text-lg font-black tracking-tight text-slate-800">
-                      Toolkit
-                    </h3>
+                    <span className="text-[10px] font-black uppercase tracking-widest text-slate-400">
+                      {toolkitItems.length} Items
+                    </span>
                   </div>
 
-                  <div className="grid grid-cols-1 gap-4">
-                    {(currentPkg.included_items || []).map((item) => {
-                      const itemImage =
-                        item.image_url || item.url || "/placeholder-image.png";
+                  {toolkitItems.length === 0 ? (
+                    <EmptyState
+                      icon={Hammer}
+                      title="No toolkit"
+                      text="This package does not have included items yet."
+                    />
+                  ) : (
+                    <>
+                      <div className="grid grid-cols-1 gap-4">
+                        {visibleToolkitItems.map((item) => {
+                          const itemImage =
+                            item.image_url ||
+                            item.url ||
+                            "/placeholder-image.png";
 
-                      return (
-                        <div
-                          key={item.id}
-                          className="group relative aspect-video w-full rounded-2xl overflow-hidden border border-slate-100"
+                          return (
+                            <div
+                              key={item.id}
+                              className="group relative aspect-video w-full rounded-2xl overflow-hidden border border-slate-100"
+                            >
+                              <Image
+                                src={itemImage}
+                                fill
+                                className="object-cover transition-transform duration-500 group-hover:scale-105"
+                                alt={item.name || "Included item"}
+                                unoptimized
+                              />
+
+                              <div className="absolute inset-0 bg-black/60 flex flex-col justify-end p-4 opacity-0 group-hover:opacity-100 transition-opacity text-left">
+                                <p className="text-white text-[10px] font-black uppercase tracking-widest">
+                                  {item.name}
+                                </p>
+
+                                <p className="text-white/70 text-[8px] font-bold mt-1 line-clamp-2">
+                                  {item.description || "No description"}
+                                </p>
+                              </div>
+                            </div>
+                          );
+                        })}
+                      </div>
+
+                      {toolkitItems.length > TOOLKIT_PREVIEW_LIMIT && (
+                        <button
+                          type="button"
+                          onClick={() => {
+                            setShowFullToolkit((prev) => !prev);
+                            scrollToSection(toolkitRef);
+                          }}
+                          className="w-full mt-5 py-4 rounded-2xl bg-amber-50 text-amber-600 text-[10px] font-black uppercase tracking-widest hover:bg-amber-500 hover:text-white transition-all"
                         >
-                          <Image
-                            src={itemImage}
-                            fill
-                            className="object-cover"
-                            alt={item.name || "Included item"}
-                            unoptimized
-                          />
-
-                          <div className="absolute inset-0 bg-black/60 flex flex-col justify-end p-4 opacity-0 group-hover:opacity-100 transition-opacity text-left">
-                            <p className="text-white text-[10px] font-black uppercase tracking-widest">
-                              {item.name}
-                            </p>
-
-                            <p className="text-white/70 text-[8px] font-bold mt-1 line-clamp-2">
-                              {item.description}
-                            </p>
-                          </div>
-                        </div>
-                      );
-                    })}
-                  </div>
+                          {showFullToolkit
+                            ? "Show Less"
+                            : `See More (${
+                                toolkitItems.length - TOOLKIT_PREVIEW_LIMIT
+                              } more)`}
+                        </button>
+                      )}
+                    </>
+                  )}
                 </div>
               </div>
             </motion.div>
@@ -434,6 +591,22 @@ export default function ServiceDetailPage() {
           </div>
         </div>
       </main>
+
+      <AnimatePresence>
+        {showBackToTop && (
+          <motion.button
+            type="button"
+            onClick={scrollToTop}
+            initial={{ opacity: 0, y: 20, scale: 0.9 }}
+            animate={{ opacity: 1, y: 0, scale: 1 }}
+            exit={{ opacity: 0, y: 20, scale: 0.9 }}
+            className="fixed bottom-8 right-8 z-[999] w-14 h-14 rounded-2xl bg-indigo-600 text-white shadow-2xl shadow-indigo-300 flex items-center justify-center hover:bg-slate-900 transition-all active:scale-95"
+            aria-label="Back to top"
+          >
+            <ArrowUp size={22} />
+          </motion.button>
+        )}
+      </AnimatePresence>
     </div>
   );
 }
@@ -449,6 +622,16 @@ function PkgDetail({ icon: Icon, label, value }) {
       </div>
 
       <p className="text-sm font-black tracking-tight">{value}</p>
+    </div>
+  );
+}
+
+function EmptyState({ icon: Icon, title, text }) {
+  return (
+    <div className="py-10 text-center bg-slate-50 rounded-[2rem] border border-dashed border-slate-200">
+      <Icon size={36} className="mx-auto text-slate-300 mb-3" />
+      <h4 className="text-sm font-black text-slate-600">{title}</h4>
+      <p className="text-xs font-bold text-slate-400 mt-1 px-4">{text}</p>
     </div>
   );
 }

@@ -5,7 +5,6 @@ import { useRouter } from "next/navigation";
 import { toast } from "react-toastify";
 import ContentLoader from "../../ContentLoader";
 
-// Stores
 import { useAuthGuard } from "../../../app/hooks/useAuthGuard";
 import { useServiceStoreCompany } from "../../../app/store/owner/useServiceStore";
 import { useTypeStoreCompany } from "../../../app/store/owner/useTypeStore";
@@ -16,7 +15,6 @@ import { usePackageIncludedItemStore } from "../../../app/store/services/usePack
 import { usePackageTaskGroupStore } from "../../../app/store/services/usePackageTaskGroupStore";
 import { useServicePackageStore } from "../../../app/store/services/useServicePackageStore";
 
-// Components
 import StepIndicator from "./service/StepIndicator";
 import Step1Classification from "./service/Step1Classification";
 import Step2Identity from "./service/Step2Identity";
@@ -111,13 +109,13 @@ export default function CreateServicePage() {
     if (authUser?.role === "admin") {
       fetchOwners();
     }
-  }, []);
+  }, [authUser?.role, fetchActiveCategories, fetchOwners]);
 
   useEffect(() => {
     if (formData.category_id) {
       fetchActiveTypes(formData.category_id);
     }
-  }, [formData.category_id]);
+  }, [formData.category_id, fetchActiveTypes]);
 
   const getCreatedService = (res) => {
     return res?.data?.data || res?.data || res?.service || res || null;
@@ -125,7 +123,6 @@ export default function CreateServicePage() {
 
   const getCreatedRecord = (res, key = null) => {
     if (!res) return null;
-
     return res?.data?.data || res?.data || (key ? res?.[key] : null) || res;
   };
 
@@ -146,27 +143,29 @@ export default function CreateServicePage() {
       data.append("description", formData.description || "");
       data.append("status", formData.status || "active");
 
-      imageFiles.forEach((file) => data.append("images[]", file));
+      imageFiles.forEach((file) => {
+        data.append("images[]", file);
+      });
 
       const res = await createService(data);
       const createdService = getCreatedService(res);
 
-      if (createdService?.id) {
-        setFormData((prev) => ({
-          ...prev,
-          id: createdService.id,
-          service_id: createdService.id,
-        }));
-
-        toast.success("Service created successfully!");
-        return createdService.id;
+      if (!createdService?.id) {
+        toast.error("Failed to create service");
+        return null;
       }
 
-      toast.error("Failed to create service");
-      return null;
+      setFormData((prev) => ({
+        ...prev,
+        id: createdService.id,
+        service_id: createdService.id,
+      }));
+
+      toast.success("Service created successfully!");
+      return createdService.id;
     } catch (error) {
       console.error("Create service error:", error);
-      toast.error("Failed to create service");
+      toast.error(error?.message || "Failed to create service");
       return null;
     } finally {
       setLoading(false);
@@ -181,7 +180,6 @@ export default function CreateServicePage() {
 
     if (currentStep === 2 && !formData.service_id) {
       const serviceId = await createBaseService();
-
       if (!serviceId) return;
     }
 
@@ -196,48 +194,49 @@ export default function CreateServicePage() {
       return [];
     }
 
-    const createdTaskGroups = [];
+    const groups = (formData.task_groups || []).filter((group) =>
+      group.name?.trim()
+    );
 
-    for (const group of formData.task_groups || []) {
-      if (!group.name) continue;
+    const createdTaskGroups = await Promise.all(
+      groups.map(async (group) => {
+        const groupRes = await createTaskGroup({
+          service_id: serviceId,
+          name: group.name,
+          description: group.description || null,
+          status: group.status || "active",
+        });
 
-      const groupPayload = {
-        service_id: serviceId,
-        name: group.name,
-        description: group.description || null,
-        status: group.status || "active",
-      };
+        const savedGroup = getCreatedRecord(groupRes, "task_group");
 
-      const groupRes = await createTaskGroup(groupPayload);
-      const savedGroup = getCreatedRecord(groupRes, "task_group");
-
-      if (!savedGroup?.id) {
-        throw new Error("Failed to create task group");
-      }
-
-      createdTaskGroups.push(savedGroup);
-
-      for (let index = 0; index < (group.items || []).length; index++) {
-        const item = group.items[index];
-
-        if (!item.title) continue;
-
-        const itemPayload = {
-          task_group_id: savedGroup.id,
-          title: item.title,
-          description: item.description || null,
-          sort_order: item.sort_order || index + 1,
-          status: item.status || "active",
-        };
-
-        const itemRes = await createTaskItem(itemPayload);
-
-        if (!itemRes) {
-          const storeError = useTaskItemStore.getState().error;
-          throw new Error(storeError || "Failed to create task item");
+        if (!savedGroup?.id) {
+          throw new Error("Failed to create task group");
         }
-      }
-    }
+
+        const items = (group.items || []).filter((item) => item.title?.trim());
+
+        await Promise.all(
+          items.map(async (item, index) => {
+            const itemRes = await createTaskItem({
+              task_group_id: savedGroup.id,
+              title: item.title,
+              description: item.description || null,
+              sort_order: item.sort_order || index + 1,
+              status: item.status || "active",
+            });
+
+            if (!itemRes) {
+              const storeError = useTaskItemStore.getState().error;
+              throw new Error(storeError || "Failed to create task item");
+            }
+
+            return itemRes;
+          })
+        );
+
+        return savedGroup;
+      })
+    );
 
     return createdTaskGroups;
   };
@@ -250,32 +249,34 @@ export default function CreateServicePage() {
       return [];
     }
 
-    const createdIncludedItems = [];
+    const items = (formData.included_items || []).filter((item) =>
+      item.name?.trim()
+    );
 
-    for (const item of formData.included_items || []) {
-      if (!item.name) continue;
+    const createdIncludedItems = await Promise.all(
+      items.map(async (item) => {
+        const data = new FormData();
 
-      const data = new FormData();
+        data.append("service_id", serviceId);
+        data.append("name", item.name);
+        data.append("description", item.description || "");
+        data.append("status", item.status || "active");
 
-      data.append("service_id", serviceId);
-      data.append("name", item.name);
-      data.append("description", item.description || "");
-      data.append("status", item.status || "active");
+        if (item.image) {
+          data.append("image", item.image);
+        }
 
-      if (item.image) {
-        data.append("image", item.image);
-      }
+        const res = await createIncludedItem(data);
+        const savedItem = getCreatedRecord(res, "included_item");
 
-      const res = await createIncludedItem(data);
-      const savedItem = getCreatedRecord(res, "included_item");
+        if (!savedItem?.id) {
+          const storeError = useIncludedItemStore.getState().error;
+          throw new Error(storeError || "Failed to create included item");
+        }
 
-      if (!savedItem?.id) {
-        const storeError = useIncludedItemStore.getState().error;
-        throw new Error(storeError || "Failed to create included item");
-      }
-
-      createdIncludedItems.push(savedItem);
-    }
+        return savedItem;
+      })
+    );
 
     return createdIncludedItems;
   };
@@ -284,14 +285,6 @@ export default function CreateServicePage() {
     createdIncludedItems = [],
     createdTaskGroups = []
   ) => {
-    createdIncludedItems = Array.isArray(createdIncludedItems)
-      ? createdIncludedItems
-      : [];
-
-    createdTaskGroups = Array.isArray(createdTaskGroups)
-      ? createdTaskGroups
-      : [];
-
     const serviceId = formData.service_id;
 
     if (!serviceId) {
@@ -299,74 +292,67 @@ export default function CreateServicePage() {
       return false;
     }
 
-    for (const pkg of formData.packages || []) {
-      if (!pkg.title) continue;
+    const packages = (formData.packages || []).filter((pkg) =>
+      pkg.title?.trim()
+    );
 
-      const packagePayload = {
-        service_id: serviceId,
-        title: pkg.title,
-        description: pkg.description || null,
-        price: pkg.price === "" || pkg.price === undefined ? 0 : pkg.price,
-        billing_type: pkg.billing_type || "one_time",
-        min_area_m2: emptyToNull(pkg.min_area_m2),
-        max_area_m2: emptyToNull(pkg.max_area_m2),
-        floor_number: emptyToNull(pkg.floor_number),
-        bedrooms: emptyToNull(pkg.bedrooms),
-        duration_hours: emptyToNull(pkg.duration_hours),
-        workers_count: emptyToNull(pkg.workers_count),
-        status: pkg.status || "active",
-      };
-
-      const packageRes = await createServicePackage(packagePayload);
-
-      if (!packageRes) {
-        const storeError = useServicePackageStore.getState().error;
-        throw new Error(storeError || "Failed to create service package");
-      }
-
-      const savedPackage = getCreatedRecord(packageRes, "package");
-
-      if (!savedPackage?.id) {
-        console.error("Invalid service package response:", packageRes);
-        throw new Error("Service package created but response has no id");
-      }
-
-      for (
-        let order = 0;
-        order < (pkg.included_item_indices || []).length;
-        order++
-      ) {
-        const itemIndex = pkg.included_item_indices[order];
-        const savedIncludedItem = createdIncludedItems[itemIndex];
-
-        if (!savedIncludedItem?.id) continue;
-
-        const pivotRes = await createPackageIncludedItem({
-          package_id: savedPackage.id,
-          included_item_id: savedIncludedItem.id,
-          sort_order: order + 1,
+    await Promise.all(
+      packages.map(async (pkg) => {
+        const packageRes = await createServicePackage({
+          service_id: serviceId,
+          title: pkg.title,
+          description: pkg.description || null,
+          price: pkg.price === "" || pkg.price === undefined ? 0 : pkg.price,
+          billing_type: pkg.billing_type || "one_time",
+          min_area_m2: emptyToNull(pkg.min_area_m2),
+          max_area_m2: emptyToNull(pkg.max_area_m2),
+          floor_number: emptyToNull(pkg.floor_number),
+          bedrooms: emptyToNull(pkg.bedrooms),
+          duration_hours: emptyToNull(pkg.duration_hours),
+          workers_count: emptyToNull(pkg.workers_count),
+          status: pkg.status || "active",
         });
 
-        if (!pivotRes) {
-          const storeError = usePackageIncludedItemStore.getState().error;
-          throw new Error(storeError || "Failed to attach included item");
+        if (!packageRes) {
+          const storeError = useServicePackageStore.getState().error;
+          throw new Error(storeError || "Failed to create service package");
         }
-      }
 
-      for (const savedTaskGroup of createdTaskGroups) {
-        if (!savedTaskGroup?.id) continue;
+        const savedPackage = getCreatedRecord(packageRes, "package");
 
-        const groupPivotRes = await createPackageTaskGroup({
-          package_id: savedPackage.id,
-          task_group_id: savedTaskGroup.id,
-        });
-
-        if (!groupPivotRes) {
-          const storeError = usePackageTaskGroupStore.getState().error;
-          throw new Error(storeError || "Failed to attach task group");
+        if (!savedPackage?.id) {
+          console.error("Invalid service package response:", packageRes);
+          throw new Error("Service package created but response has no id");
         }
-      }
-    }
+
+        const includedLinks = (pkg.included_item_indices || [])
+          .map((itemIndex, order) => {
+            const savedIncludedItem = createdIncludedItems[itemIndex];
+
+            if (!savedIncludedItem?.id) return null;
+
+            return createPackageIncludedItem({
+              package_id: savedPackage.id,
+              included_item_id: savedIncludedItem.id,
+              sort_order: order + 1,
+            });
+          })
+          .filter(Boolean);
+
+        const taskGroupLinks = createdTaskGroups
+          .map((savedTaskGroup) => {
+            if (!savedTaskGroup?.id) return null;
+
+            return createPackageTaskGroup({
+              package_id: savedPackage.id,
+              task_group_id: savedTaskGroup.id,
+            });
+          })
+          .filter(Boolean);
+
+        await Promise.all([...includedLinks, ...taskGroupLinks]);
+      })
+    );
 
     return true;
   };
@@ -377,8 +363,10 @@ export default function CreateServicePage() {
     setLoading(true);
 
     try {
-      const createdTaskGroups = await autoCreateChecklist();
-      const createdIncludedItems = await autoCreateIncludedItems();
+      const [createdTaskGroups, createdIncludedItems] = await Promise.all([
+        autoCreateChecklist(),
+        autoCreateIncludedItems(),
+      ]);
 
       const packageSuccess = await autoCreatePackages(
         createdIncludedItems,
@@ -394,7 +382,7 @@ export default function CreateServicePage() {
       );
     } catch (error) {
       console.error("Deploy service error:", error);
-      toast.error(error.message || "Failed to deploy service");
+      toast.error(error?.message || "Failed to deploy service");
     } finally {
       setLoading(false);
     }
