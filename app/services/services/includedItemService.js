@@ -19,8 +19,10 @@ export const includedItemService = {
 
   // Update included item
   update: (id, data) =>
-    api.put(`/owner/included-items/${id}`, data, {
-      headers: { Accept: "application/json" },
+    api.post(`/owner/included-items/${id}`, data, {
+      headers: {
+        Accept: "application/json",
+      },
     }),
 
   // Delete single included item

@@ -360,6 +360,7 @@ export default function Step4Inventory({
         : await createIncludedItem(payload);
 
       if (!res) return;
+      console.log(res);
 
       const newItemId = item.id || res?.data?.id || res?.id;
 

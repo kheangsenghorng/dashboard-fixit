@@ -116,7 +116,6 @@ export default function OwnerDashboard() {
     fetchStatsByOwnerId,
   ]);
 
-  console.log(payoutStats);
 
   const filteredBookings = useMemo(() => {
     if (!searchQuery.trim()) {
