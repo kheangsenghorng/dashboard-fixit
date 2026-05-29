@@ -108,6 +108,11 @@ export const useIncludedItemStore = create((set, get) => ({
     set({ loading: true, error: null });
 
     try {
+      // Laravel file upload update: POST + _method PUT
+      if (data instanceof FormData && !data.has("_method")) {
+        data.append("_method", "PUT");
+      }
+
       const res = await includedItemService.update(id, data);
 
       await get().getAll();
@@ -126,7 +131,6 @@ export const useIncludedItemStore = create((set, get) => ({
       return null;
     }
   },
-
   remove: async (id) => {
     set({ loading: true, error: null });
 
