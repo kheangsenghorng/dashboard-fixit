@@ -27,6 +27,7 @@ import { useServiceBookingStore } from "../../store/useServiceBookingStore";
 import { useOwnerGuard } from "../../hooks/useOwnerGuard";
 import ServiceBookingListener from "../../../Components/realtime/ServiceBookingListener";
 import useOwnerPayoutStore from "../../store/owner/ownerPayoutStore";
+import { useTelegramStore } from "../../store/telegram/useTelegramStore";
 
 const PER_PAGE = 10;
 
@@ -67,6 +68,18 @@ export default function OwnerDashboard() {
     fetchPayoutsByOwnerId,
     fetchStatsByOwnerId,
   } = useOwnerPayoutStore();
+
+  const {
+    telegramData,
+    loading: telegramLoading,
+    syncing,
+    checking,
+    error: telegramError,
+    showPopup,
+    setShowPopup,
+    checkAllTelegram,
+    isConnected,
+  } = useTelegramStore();
 
   const [showFullLoader, setShowFullLoader] = useState(true);
   const [searchQuery, setSearchQuery] = useState("");
@@ -116,6 +129,11 @@ export default function OwnerDashboard() {
     fetchStatsByOwnerId,
   ]);
 
+  useEffect(() => {
+    if (ownerId) {
+      checkAllTelegram().catch(() => {});
+    }
+  }, [ownerId, checkAllTelegram]);
 
   const filteredBookings = useMemo(() => {
     if (!searchQuery.trim()) {
@@ -143,7 +161,7 @@ export default function OwnerDashboard() {
     const uniqueCustomerIds = new Set(
       (serviceBookings || [])
         .map((booking) => booking?.user?.id || booking?.user_id)
-        .filter(Boolean)
+        .filter(Boolean),
     );
 
     return {
@@ -273,6 +291,115 @@ export default function OwnerDashboard() {
               </div>
             </motion.div>
           )}
+          <AnimatePresence>
+            {showPopup && (
+              <motion.div
+                initial={{ opacity: 0 }}
+                animate={{ opacity: 1 }}
+                exit={{ opacity: 0 }}
+                className="fixed inset-0 z-[120] flex items-center justify-center bg-black/60 p-4 backdrop-blur-md"
+              >
+                <motion.div
+                  initial={{ scale: 0.92, y: 20 }}
+                  animate={{ scale: 1, y: 0 }}
+                  exit={{ scale: 0.92, y: 20 }}
+                  className="w-full max-w-md overflow-hidden rounded-[2rem] bg-white shadow-2xl"
+                >
+                  <div className="bg-gradient-to-r from-blue-600 to-cyan-500 p-6 text-center text-white">
+                    <div className="mx-auto flex h-16 w-16 items-center justify-center rounded-2xl bg-white/20">
+                      <Bell size={32} />
+                    </div>
+
+                    <h2 className="mt-4 text-2xl font-black">
+                      Connect Telegram
+                    </h2>
+
+                    <p className="mt-2 text-sm text-blue-100">
+                      Receive booking notifications instantly
+                    </p>
+                  </div>
+
+                  <div className="p-6">
+                    {telegramError && (
+                      <p className="mb-4 rounded-xl bg-red-50 p-3 text-sm font-bold text-red-600">
+                        {telegramError}
+                      </p>
+                    )}
+
+                    {isConnected() ? (
+                      <div className="rounded-2xl bg-emerald-50 p-4 text-center">
+                        <p className="text-lg font-black text-emerald-600">
+                          ✅ Telegram Connected
+                        </p>
+
+                        <p className="mt-1 text-sm text-slate-500">
+                          {telegramData?.telegram_group_name ||
+                            "Telegram Group"}
+                        </p>
+
+                        <p className="text-xs text-slate-400">
+                          {telegramData?.telegram_group_id || ""}
+                        </p>
+                      </div>
+                    ) : (
+                      <>
+                        <div className="rounded-2xl border border-slate-200 bg-slate-50 p-4 text-center">
+                          <p className="text-xs font-bold uppercase tracking-wider text-slate-400">
+                            Connect Code
+                          </p>
+
+                          <p className="mt-2 font-mono text-xl font-black text-blue-600">
+                            {telegramData?.connect_code ||
+                              telegramData?.groupLink?.connect_code ||
+                              "FIXIT-BOFELUPG"}
+                          </p>
+                        </div>
+
+                        <p className="mt-4 text-center text-sm text-slate-500">
+                          Add the bot to your Telegram group, then click Check
+                          Status.
+                        </p>
+
+                        <a
+                          href={
+                            telegramData?.telegram_link ||
+                            telegramData?.groupLink?.telegram_link ||
+                            "https://t.me/FixitServiceME_bot?startgroup=FIXIT-BOFELUPG"
+                          }
+                          target="_blank"
+                          rel="noopener noreferrer"
+                          className="mt-5 flex items-center justify-center rounded-2xl bg-blue-600 px-5 py-3 font-bold text-white hover:bg-blue-700"
+                        >
+                          Open Telegram
+                        </a>
+                      </>
+                    )}
+
+                    <div className="mt-4 flex gap-3">
+                      <button
+                        type="button"
+                        onClick={() => checkAllTelegram().catch(() => {})}
+                        disabled={telegramLoading || syncing || checking}
+                        className="flex-1 rounded-2xl bg-slate-900 px-5 py-3 text-sm font-black text-white disabled:opacity-60"
+                      >
+                        {telegramLoading || syncing || checking
+                          ? "Checking..."
+                          : "Check Status"}
+                      </button>
+
+                      <button
+                        type="button"
+                        onClick={() => setShowPopup(false)}
+                        className="flex-1 rounded-2xl bg-slate-100 px-5 py-3 text-sm font-black text-slate-600 hover:bg-slate-200"
+                      >
+                        Close
+                      </button>
+                    </div>
+                  </div>
+                </motion.div>
+              </motion.div>
+            )}
+          </AnimatePresence>
 
           <div className="grid grid-cols-1 gap-6 md:grid-cols-2 lg:grid-cols-4">
             <StatCard
@@ -339,7 +466,7 @@ export default function OwnerDashboard() {
                 <ServiceBookingListener
                   onNewBooking={(booking) => {
                     toast.success(
-                      `New booking received #BK-00${booking?.id || ""}`
+                      `New booking received #BK-00${booking?.id || ""}`,
                     );
 
                     if (ownerId) {
